@@ -16,9 +16,9 @@ jobs:
       - run: pnpm --filter @deshtori/shared build
       - run: pnpm --filter @deshtori/shared test
       - run: pnpm --filter @deshtori/api exec prisma generate
-      - run: pnpm --filter @deshtori/api typecheck
-      - run: pnpm --filter @deshtori/web typecheck
-      - run: pnpm --filter @deshtori/web build
+      - run: scripts/ci-run.sh pnpm --filter @deshtori/api typecheck
+      - run: scripts/ci-run.sh pnpm --filter @deshtori/web typecheck
+      - run: scripts/ci-run.sh pnpm --filter @deshtori/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000/api
 
@@ -52,9 +52,9 @@ jobs:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @deshtori/shared build
-      - run: pnpm --filter @deshtori/api exec prisma db push --skip-generate=false
-      - run: pnpm --filter @deshtori/api prisma:seed
-      - run: pnpm --filter @deshtori/api build
+      - run: scripts/ci-run.sh pnpm --filter @deshtori/api exec prisma db push
+      - run: scripts/ci-run.sh pnpm --filter @deshtori/api prisma:seed
+      - run: scripts/ci-run.sh pnpm --filter @deshtori/api build
       - name: Start API and run smoke test
         run: |
           node apps/api/dist/main.js > api.log 2>&1 &
