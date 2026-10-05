@@ -4,6 +4,7 @@ import './globals.css';
 import { TopBar } from '@/components/TopBar';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { Chrome } from '@/components/Chrome';
 import { API_URL } from '@/lib/api';
 import type { PublicSettings } from '@/lib/types';
 
@@ -11,6 +12,8 @@ const hind = Hind_Siliguri({ subsets: ['bengali', 'latin'], weight: ['400', '500
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['700', '800'], variable: '--font-cinzel' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  openGraph: { siteName: 'DeshTori', locale: 'bn_BD', type: 'website', images: ['/brand/logo-footer.png'] },
   title: 'DeshTori – চীনের বাজার থেকে আপনার দুয়ারে',
   description: '1688 ও Taobao-র পণ্য টাকায় লাইভ দামে অর্ডার করুন। Air ৭–১৫ দিন, Sea ৪৫–৬৫ দিনে বাংলাদেশে ডোর-টু-ডোর ডেলিভারি।',
   icons: { icon: '/brand/logo-header.png' },
@@ -38,10 +41,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="min-h-screen flex flex-col">
-        <TopBar notice={settings?.notice} />
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <Chrome top={<TopBar notice={settings?.notice} />} header={<Header />} footer={<Footer />}>
+          {children}
+        </Chrome>
       </body>
     </html>
   );

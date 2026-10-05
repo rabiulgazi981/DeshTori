@@ -42,5 +42,35 @@ export const ERR_BN: Record<string, string> = {
   COUPON_INVALID: 'কুপনটি সঠিক নয়',
   MIN_ORDER_NOT_MET: 'কুপনের জন্য ন্যূনতম অর্ডার পূরণ হয়নি',
   OUT_OF_STOCK: 'স্টকে নেই',
+  WALLET_LOW: 'ওয়ালেটে যথেষ্ট টাকা নেই',
+  MORE_THAN_DUE: 'বাকির চেয়ে বেশি টাকা দেওয়া যাবে না',
+  GATEWAY_NOT_CONFIGURED: 'এই পেমেন্ট পদ্ধতি এখনো চালু হয়নি',
+  TRXID_ALREADY_USED: 'এই TrxID আগে ব্যবহার হয়েছে',
+  ALREADY_ANSWERED: 'আগেই উত্তর দেওয়া হয়েছে',
+  NOT_DELIVERED_YET: 'পণ্য হাতে পাওয়ার পর অভিযোগ করা যাবে',
+  IMAGE_ONLY: 'শুধু JPG/PNG/WEBP ছবি দিন',
+  IMAGE_TOO_LARGE: 'ছবি ৪ MB-এর কম হতে হবে',
+  TICKET_CLOSED: 'টিকেটটি বন্ধ হয়ে গেছে',
+  STAFF_ONLY: 'শুধু স্টাফদের জন্য',
+  ROLE_REQUIRED: 'আপনার এই কাজের অনুমতি নেই',
+  PHONE_ALREADY_USED: 'এই নম্বর আগেই ব্যবহার হয়েছে',
+  ORDERS_OF_DIFFERENT_CUSTOMERS: 'একই গ্রাহকের অর্ডার বাছাই করুন',
+  EMPTY_SHIPMENT: 'অন্তত একটি অর্ডার বা পার্সেল বাছাই করুন',
+  SHIP_REQUESTS_NOT_READY: 'পার্সেল এখনো গুদামে পৌঁছায়নি',
+  CANNOT_DEMOTE_SELF: 'নিজের OWNER রোল সরানো যাবে না',
+  WALLET_NEGATIVE: 'ব্যালেন্স মাইনাস হয়ে যাবে',
 };
 export const errText = (e: unknown) => (e instanceof ApiError ? ERR_BN[e.code] ?? e.code : 'কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন');
+
+/** Read a picked image file as a data URL and upload it. Returns the public URL. */
+export async function uploadImage(file: File): Promise<string> {
+  if (file.size > 4 * 1024 * 1024) throw new ApiError(400, 'IMAGE_TOO_LARGE', null);
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(String(fr.result));
+    fr.onerror = () => rej(fr.error);
+    fr.readAsDataURL(file);
+  });
+  const r = await api<{ url: string }>('/uploads', { method: 'POST', json: { dataUrl } });
+  return r.url;
+}
