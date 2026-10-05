@@ -7,14 +7,25 @@ const WEB = 'http://localhost:3000';
 const API = 'http://localhost:4000/api';
 mkdirSync('shots', { recursive: true });
 
+const post = async (path, body) => {
+  // auth endpoints are throttled (20/min per IP) and the smoke test just used most of that budget — wait it out
+  for (let i = 0; i < 4; i++) {
+    const r = await fetch(`${API}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (r.status !== 429) return r;
+    await new Promise((res) => setTimeout(res, 20000));
+  }
+  throw new Error(`${path} still rate limited`);
+};
+
 async function login(phone, password, staff) {
-  let r = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, password }) });
+  let r = await post('/auth/login', { phone, password });
   let cookie = r.headers.get('set-cookie');
   if (staff) {
     const j = await r.json();
-    r = await fetch(`${API}/auth/staff/verify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, code: j.devCode }) });
+    r = await post('/auth/staff/verify', { phone, code: j.devCode });
     cookie = r.headers.get('set-cookie');
   }
+  if (!cookie) throw new Error(`login failed for ${phone}: HTTP ${r.status}`);
   const [kv] = cookie.split(';');
   const [name, value] = kv.split('=');
   return { name, value, domain: 'localhost', path: '/' };
