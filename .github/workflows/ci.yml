@@ -56,6 +56,7 @@ jobs:
       - run: scripts/ci-run.sh pnpm --filter @deshtori/api prisma:seed
       - run: scripts/ci-run.sh pnpm --filter @deshtori/api build
       - name: Start API and run smoke test
+        shell: bash
         run: |
           node apps/api/dist/main.js > api.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:4000/api/health && break; sleep 1; done
@@ -64,3 +65,4 @@ jobs:
         run: |
           echo "::group::api.log"; tail -n 80 api.log || true; echo "::endgroup::"
           grep '✗' smoke.log | while read l; do echo "::error::$l"; done || true
+          echo "::notice::smoke: $(grep -c '✓' smoke.log) passed, $(grep -c '✗' smoke.log) failed"
