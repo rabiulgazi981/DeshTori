@@ -58,4 +58,29 @@ export class PaymentsService {
     }
     return { ok: true };
   }
+
+  /** Money that is already confirmed (gateway success or wallet): credit the order immediately. */
+  async recordConfirmed(d: { orderId: string; userId: string; method: PaymentMethod; amount: number; trxId?: string; raw?: unknown; actorId?: string }) {
+    const order = await this.prisma.order.findUnique({ where: { id: d.orderId } });
+    if (!order) throw new NotFoundException();
+    await this.prisma.$transaction(async (tx) => {
+      if (d.method === 'WALLET') {
+        const u = await tx.user.updateMany({ where: { id: d.userId, walletPaisa: { gte: d.amount } }, data: { walletPaisa: { decrement: d.amount } } });
+        if (u.count !== 1) throw new BadRequestException('WALLET_LOW');
+        await tx.walletTxn.create({ data: { userId: d.userId, type: 'ORDER_PAYMENT', amount: -d.amount, note: `অর্ডার ${order.code}`, orderId: order.id } });
+      }
+      await tx.payment.create({ data: { orderId: order.id, userId: d.userId, method: d.method, amount: d.amount, trxId: d.trxId, status: 'VERIFIED', verifiedAt: new Date(), verifiedBy: d.actorId ?? 'gateway', raw: (d.raw ?? undefined) as never } });
+      const move = order.status === 'PENDING_PAYMENT' || order.status === 'PAYMENT_REVIEW';
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          paidPaisa: { increment: d.amount },
+          ...(move ? { status: 'NEW', events: { create: { fromStatus: order.status, toStatus: 'NEW', note: `${d.method} ${d.trxId ?? ''}`.trim(), actorId: d.userId } } } : {}),
+        },
+      });
+      if (d.method !== 'WALLET') await tx.ledgerEntry.create({ data: { kind: 'INCOME', category: 'CUSTOMER_PAYMENT', amount: d.amount, orderId: order.id, note: `${d.method} ${d.trxId ?? ''}`, createdBy: d.actorId ?? 'gateway' } });
+    });
+    await this.audit.log({ actorId: d.userId, action: 'PAYMENT_CONFIRMED', entity: 'Order', entityId: order.id, after: { method: d.method, amount: d.amount, trxId: d.trxId } });
+    return { ok: true, orderCode: order.code };
+  }
 }

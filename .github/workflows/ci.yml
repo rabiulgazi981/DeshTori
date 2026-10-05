@@ -41,6 +41,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-secret
       OTP_DEV_ECHO: 'true'
+      GATEWAY_MOCK: 'true'
       NODE_ENV: test
       SEED_OWNER_PHONE: '+8801938273878'
       SEED_OWNER_PASSWORD: owner12345
@@ -64,5 +65,6 @@ jobs:
       - if: always()
         run: |
           echo "::group::api.log"; tail -n 80 api.log || true; echo "::endgroup::"
+          grep -iE 'error|exception' api.log | head -n 8 | while read l; do echo "::error::api: $l"; done || true
           grep '✗' smoke.log | while read l; do echo "::error::$l"; done || true
           echo "::notice::smoke: $(grep -c '✓' smoke.log) passed, $(grep -c '✗' smoke.log) failed"

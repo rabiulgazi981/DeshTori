@@ -532,3 +532,31 @@ model LedgerEntry {
   createdBy String
   createdAt DateTime @default(now())
 }
+
+// ───────────────────────── Customer extras ─────────────────────────
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  market    String
+  sourceId  String
+  title     String
+  image     String?
+  pricePaisa Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, market, sourceId])
+}
+
+/// Gateway checkout sessions (bKash / Nagad / SSLCommerz)
+model GatewaySession {
+  id         String   @id @default(cuid())
+  userId     String
+  orderId    String
+  method     String
+  amount     Int
+  externalId String?
+  status     String   @default("INIT") // INIT / PAID / FAILED
+  raw        Json?
+  createdAt  DateTime @default(now())
+}

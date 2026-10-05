@@ -125,6 +125,147 @@ check('add freight charge', r.status === 201, r);
 r = await call('c', 'GET', `/orders/${order.code}`);
 check('bill shows due freight', r.json?.bill?.due === 91200, r.json?.bill);
 
+// ───────── invoice (snapshot) ─────────
+r = await call('s', 'POST', '/admin/invoices', { orderCodes: [order.code], kind: 'DELIVERY' });
+check('invoice created', r.status === 201 && r.json.code?.startsWith('INV-') && r.json.totalPaisa - r.json.paidPaisa === 91200, r);
+const inv = r.json;
+r = await call('c', 'GET', `/invoices/${inv?.code}`);
+check('customer opens invoice, fixed caption, no rate', r.status === 200 && r.json.signatureCaption === 'অনুমোদনকারী, DeshTori' && r.json.duePaisa === 91200 && !JSON.stringify(r.json).includes('cnyRate'), r);
+
+// ───────── wallet pay with refund money ─────────
+r = await call('s', 'GET', '/admin/customers?q=01712345678');
+const cust = r.json?.[0];
+check('admin customer search', r.status === 200 && cust?.phone === '+8801712345678', r);
+r = await call('s', 'POST', `/admin/customers/${cust?.id}/wallet`, { amount: 50000, note: 'test credit' });
+check('wallet credit by accounts', r.status === 201 && r.json.balancePaisa === 50000, r);
+r = await call('c', 'POST', '/payments/wallet', { orderCode: order.code, amount: 60000 });
+check('wallet pay rejects more than balance', r.status === 400, r);
+r = await call('c', 'POST', '/payments/wallet', { orderCode: order.code, amount: 40000 });
+check('wallet pay', r.status === 201, r);
+r = await call('c', 'GET', `/orders/${order.code}`);
+check('due reduced by wallet', r.json?.bill?.due === 51200, r.json?.bill);
+
+// ───────── mock gateway ─────────
+r = await call('c', 'GET', '/gateway/methods');
+check('gateway methods (no secrets)', r.status === 200 && r.json.MOCK === true && r.json.BKASH_GATEWAY === false, r);
+r = await call('c', 'POST', '/gateway/init', { orderCode: order.code, method: 'BKASH_GATEWAY', amount: 1000 });
+check('unconfigured gateway refused', r.status === 400, r);
+r = await call('c', 'POST', '/gateway/init', { orderCode: order.code, method: 'MOCK', amount: 51200 });
+check('mock gateway init', r.status === 201 && r.json.redirectUrl.includes('/gateway/mock/pay'), r);
+{
+  const res = await fetch(r.json.redirectUrl, { redirect: 'manual' });
+  check('mock gateway redirects to result', res.status === 302 && res.headers.get('location')?.includes('ok=1'), res.status);
+  const again = await fetch(r.json.redirectUrl, { redirect: 'manual' });
+  check('double callback does not pay twice', again.status === 302, again.status);
+}
+r = await call('c', 'GET', `/orders/${order.code}`);
+check('fully paid after gateway', r.json?.bill?.due === 0, r.json?.bill);
+
+// ───────── second order: decision + weight + shipment ─────────
+r = await call('c', 'POST', '/cart', { productId: product.id, skuId: sku.skuId, qty: 5, shipMode: 'AIR' });
+r = await call('c', 'POST', '/checkout', { advancePercent: 100, addressId, deliveryMethod: 'COURIER_HOME' });
+const order2 = r.json?.orders?.[0];
+check('second order', r.status === 201 && !!order2, r);
+r = await call('c', 'POST', '/gateway/init', { orderCode: order2.code, method: 'MOCK', amount: order2.payNowPaisa });
+await fetch(r.json.redirectUrl, { redirect: 'manual' });
+r = await call('c', 'GET', `/orders/${order2.code}`);
+check('gateway moves order to NEW', r.json?.status === 'NEW', r.json?.status);
+r = await call('s', 'PATCH', `/admin/orders/${order2.code}/status`, { status: 'PURCHASING' });
+r = await call('s', 'GET', `/admin/orders/${order2.code}`);
+check('staff order detail has supplier price', r.status === 200 && r.json.items[0].unitFen > 0 && r.json.cnyRate > 0, r);
+const itemId = r.json?.items?.[0]?.id;
+r = await call('s', 'POST', `/admin/orders/${order2.code}/decisions`, { itemId, issue: 'দাম বেড়েছে', proposal: 'প্রতি পিস ৳১০ বেশি', diffPaisa: 5000 });
+check('decision asked', r.status === 201 && r.json.token, r);
+const token = r.json?.token;
+r = await call('c', 'GET', `/orders/${order2.code}`);
+check('order NEEDS_DECISION', r.json?.status === 'NEEDS_DECISION', r.json?.status);
+r = await call('anon', 'GET', `/decisions/${token}`);
+check('public decision page', r.status === 200 && r.json.answer === 'PENDING' && !JSON.stringify(r.json).includes('Fen'), r);
+r = await call('anon', 'POST', `/decisions/${token}`, { answer: 'YES' });
+check('answer YES', r.status === 201, r);
+r = await call('anon', 'POST', `/decisions/${token}`, { answer: 'NO' });
+check('cannot answer twice', r.status === 400, r);
+r = await call('c', 'GET', `/orders/${order2.code}`);
+check('back to PURCHASING with +৳50 adjustment', r.json?.status === 'PURCHASING' && r.json.bill.due === 5000, { s: r.json?.status, b: r.json?.bill });
+r = await call('s', 'PATCH', `/admin/orders/${order2.code}/items/${itemId}`, { actualFen: 900, purchasedQty: 5 });
+check('purchase item update', r.status === 200, r);
+r = await call('s', 'PATCH', `/admin/orders/${order2.code}/status`, { status: 'AT_CN_WAREHOUSE' });
+r = await call('s', 'POST', `/admin/orders/${order2.code}/weight`, { weightKg: 2, category: 'A' });
+check('weight → freight 2kg × ৳760', r.status === 201 && r.json.amount === 152000, r);
+r = await call('s', 'POST', `/admin/orders/${order2.code}/weight`, { weightKg: 1.5, category: 'A' });
+r = await call('c', 'GET', `/orders/${order2.code}`);
+check('re-weigh replaces freight', r.json?.bill?.due === 5000 + 114000, r.json?.bill);
+
+// ───────── ship for me ─────────
+r = await call('c', 'POST', '/ship-requests', { warehouse: 'GZ_AIR', trackingNo: 'SF123456', cartons: 3, totalPieces: 120, description: 'T-shirt', category: 'A', extraService: 'NONE' });
+check('ship-for-me request', r.status === 201 && r.json.code.startsWith('SHP-') && r.json.shippingMark.startsWith('DT-'), r);
+const shp = r.json;
+r = await call('s', 'PATCH', `/admin/ship-requests/${shp.code}`, { status: 'RECEIVED', receivedCartons: 3, receivedPieces: 120, weightKg: 18 });
+check('warehouse receives parcel', r.status === 200, r);
+
+r = await call('s', 'POST', '/admin/shipments', { mode: 'AIR', route: 'GZ_AIR', carrier: 'CZ', orderCodes: [order2.code], shipRequestCodes: [shp.code], costPaisa: 1000000 });
+check('shipment created', r.status === 201 && r.json.code.startsWith('SHIP-'), r);
+const ship = r.json;
+r = await call('c', 'GET', `/orders/${order2.code}`);
+check('order SHIPPED via shipment', r.json?.status === 'SHIPPED', r.json?.status);
+r = await call('s', 'PATCH', `/admin/shipments/${ship.code}`, { status: 'ARRIVED_BD' });
+check('shipment arrived', r.status === 200, r);
+r = await call('c', 'GET', '/ship-requests');
+check('parcel ARRIVED_BD', r.json?.[0]?.status === 'ARRIVED_BD', r.json?.[0]);
+r = await call('c', 'GET', `/orders/${order2.code}`);
+check('order ARRIVED_BD', r.json?.status === 'ARRIVED_BD', r.json?.status);
+
+// ───────── support ─────────
+r = await call('c', 'POST', '/tickets', { subject: 'ডেলিভারি কবে?', text: 'কবে পাবো?' });
+check('ticket opened', r.status === 201, r);
+r = await call('s', 'POST', `/admin/tickets/${r.json?.code}/reply`, { text: 'আগামীকাল' });
+check('staff reply', r.status === 201 && r.json.status === 'ANSWERED', r);
+r = await call('c', 'POST', '/complaints', { orderCode: order2.code, kind: 'DAMAGED', qty: 1, wants: 'REFUND', details: 'ভাঙা' });
+check('complaint', r.status === 201, r);
+r = await call('s', 'PATCH', `/admin/complaints/${r.json?.code}`, { status: 'RESOLVED', resolution: '১ পিস ফেরত', refundPaisa: 2000 });
+check('complaint resolved with wallet refund', r.status === 200, r);
+r = await call('c', 'GET', '/account/wallet');
+check('wallet shows refund', r.json?.balancePaisa === 10000 + 2000, r.json);
+r = await call('c', 'POST', '/account/withdrawals', { method: 'BKASH', account: '01712345678', amount: 12000 });
+check('withdrawal holds money', r.status === 201, r);
+r = await call('s', 'PATCH', `/admin/withdrawals/${r.json?.id}`, { status: 'REJECTED' });
+r = await call('c', 'GET', '/account/wallet');
+check('rejected withdrawal returns money', r.json?.balancePaisa === 12000, r.json);
+
+// ───────── admin config ─────────
+r = await call('s', 'GET', '/admin/dashboard');
+check('dashboard', r.status === 200 && r.json.customers >= 1, r);
+r = await call('s', 'PUT', '/admin/content/videos', { value: [{ title: 'কিভাবে অর্ডার করবেন', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] });
+check('save videos', r.status === 200, r);
+r = await call('anon', 'GET', '/content/videos');
+check('public videos', r.json?.value?.length === 1, r);
+r = await call('anon', 'GET', '/content/smsTemplates');
+check('private content hidden', r.status === 404, r);
+r = await call('s', 'PUT', '/admin/settings/notice', { on: true, textBn: 'নোটিশ', textEn: 'Notice', hotline: '01938-27 38 78', speed: 'fast' });
+check('notice saved', r.status === 200 && r.json.notice.textBn === 'নোটিশ', r);
+r = await call('s', 'POST', '/admin/staff', { phone: '01811111111', name: 'Karim', roles: ['CN_PURCHASE'], password: 'staff1234' });
+check('add staff', r.status === 201, r);
+r = await call('s', 'POST', '/admin/coupons', { code: 'eid10', type: 'PERCENT', value: 10, minOrder: 100000 });
+check('coupon saved', r.status === 201 && r.json.code === 'EID10', r);
+r = await call('s', 'GET', '/admin/ledger');
+check('ledger net', r.status === 200 && typeof r.json.netPaisa === 'number', r);
+r = await call('s', 'GET', '/admin/audit');
+check('audit log', r.status === 200 && r.json.length > 5, r?.json?.length);
+r = await call('c', 'POST', '/wishlist', { market: 'M1688', id: '659022687563' });
+check('wishlist add (server price)', r.status === 201 && r.json.pricePaisa > 0, r);
+r = await call('c', 'POST', '/products/search-image', { imageUrl: 'https://example.com/a.jpg' });
+check('image search', r.status === 201 && r.json.items.length > 0, r);
+{
+  // 1×1 PNG
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  r = await call('c', 'POST', '/uploads', { dataUrl: png });
+  check('upload image', r.status === 201 && r.json.url.endsWith('.png'), r);
+  const img = await fetch(r.json.url);
+  check('uploaded image served', img.status === 200, img.status);
+  r = await call('c', 'POST', '/uploads', { dataUrl: 'data:image/png;base64,PHNjcmlwdD4=' });
+  check('fake image rejected', r.status === 400, r);
+}
+
 r = await call('c', 'POST', '/auth/logout');
 r = await call('c', 'GET', '/auth/me');
 check('logout revokes session', r.status === 401, r);

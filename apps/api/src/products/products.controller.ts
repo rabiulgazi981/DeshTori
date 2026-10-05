@@ -15,6 +15,11 @@ class LinkDto {
   @IsUrl() url: string;
 }
 
+class ImageDto {
+  @IsUrl({ require_tld: false }) imageUrl: string;
+  @IsOptional() @Type(() => Number) page?: number;
+}
+
 @Controller('products')
 export class ProductsController {
   constructor(private products: ProductsService) {}
@@ -27,6 +32,11 @@ export class ProductsController {
   @Post('resolve-link')
   resolve(@Body() dto: LinkDto) {
     return this.products.fromLink(dto.url);
+  }
+
+  @Post('search-image')
+  searchImage(@Body() dto: ImageDto) {
+    return this.products.searchByImage(dto.imageUrl, { page: dto.page });
   }
 
   @Get(':market/:id')

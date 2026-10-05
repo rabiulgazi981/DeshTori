@@ -10,3 +10,4 @@ coverage/
 .DS_Store
 .turbo/
 apps/api/uploads/
+uploads/

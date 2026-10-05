@@ -59,6 +59,16 @@ export class ProductsService {
     return { items, total: raw.total, blocked: false };
   }
 
+  async searchByImage(imageUrl: string, opts: SearchOptions) {
+    const list = await this.blocked();
+    const raw = await this.provider.searchByImage(imageUrl, opts);
+    const s = await this.settings.get();
+    const items = raw.items
+      .filter((i) => !this.isBlocked(i.titleEn, list))
+      .map((i) => ({ market: i.market, id: i.sourceId, title: i.titleEn, image: i.image, soldCount: i.soldCount, pricePaisa: this.price(i.fen, i.promoFen, s.pricing, s.useOriginalPrice) }));
+    return { items, total: raw.total, blocked: false };
+  }
+
   /** Product page data in BDT only (supplier CNY never leaves the server). */
   async detail(market: Market, sourceId: string) {
     const p = await this.fetchAndStore(market, sourceId);
