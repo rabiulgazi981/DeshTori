@@ -1,14 +1,13 @@
 'use client';
 import { useState } from 'react';
 
-export function Gallery({ images, market }: { images: string[]; market: string }) {
+export function Gallery({ images }: { images: string[] }) {
   const [i, setI] = useState(0);
   return (
     <div className="card flex flex-col gap-3 p-4">
       <div className="relative aspect-square overflow-hidden rounded-xl bg-ivory-ph">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {images[i] && <img src={images[i]} alt="" className="h-full w-full object-cover" />}
-        {market !== 'M1688' && <span className="chip absolute left-3 top-3 bg-navy text-white">{market === 'TMALL' ? 'Tmall' : 'Taobao'}</span>}
       </div>
       <div className="grid grid-cols-5 gap-2">
         {images.slice(0, 5).map((src, k) => (

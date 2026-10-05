@@ -28,7 +28,7 @@ export default async function ProductPage({ params }: { params: { market: string
     <div className="mx-auto flex max-w-[1280px] flex-col gap-5 px-3 py-5 md:px-6">
       <div className="flex flex-wrap items-start gap-5">
         <div className="min-w-0 flex-[1_1_340px]">
-          <Gallery images={p.images} market={p.market} />
+          <Gallery images={p.images} />
         </div>
         <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-4">
           <div className="card flex flex-col gap-3 p-5">
