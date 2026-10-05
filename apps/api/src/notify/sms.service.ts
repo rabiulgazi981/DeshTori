@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface SmsProvider {
   send(to: string, message: string): Promise<void>;
@@ -34,7 +35,7 @@ export class SmsService {
   private provider: SmsProvider;
   private log = new Logger('SMS');
 
-  constructor() {
+  constructor(private prisma: PrismaService) {
     const p = process.env.SMS_PROVIDER ?? 'console';
     this.provider =
       p === 'http' && process.env.SMS_HTTP_URL
@@ -49,5 +50,23 @@ export class SmsService {
       this.log.error(`failed to send SMS to ${to}: ${(e as Error).message}`);
       throw e;
     }
+  }
+
+  /**
+   * Send using the admin-editable template (Settings → SMS). Falls back to the built-in text.
+   * key: orderPlaced | status | payment | arrived. A template switched off sends nothing.
+   */
+  async sendTemplate(to: string, key: 'orderPlaced' | 'status' | 'payment' | 'arrived', vars: Record<string, string>, fallback: string) {
+    let text = fallback;
+    try {
+      const row = await this.prisma.setting.findUnique({ where: { key: 'content.smsTemplates' } });
+      const t = (row?.value ?? {}) as Record<string, unknown>;
+      if (t[`${key}On`] === false) return;
+      if (typeof t[key] === 'string' && (t[key] as string).trim()) text = t[key] as string;
+    } catch {
+      /* use fallback */
+    }
+    text = text.replace(/\{(\w+)\}/g, (m, k: string) => vars[k] ?? m);
+    await this.send(to, text).catch(() => undefined);
   }
 }

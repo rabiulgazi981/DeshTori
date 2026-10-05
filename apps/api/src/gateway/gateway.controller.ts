@@ -110,8 +110,15 @@ export class GatewayController {
   constructor(private prisma: PrismaService, private payments: PaymentsService, private orders: OrdersService) {}
 
   /** Which online methods are switched on (no secrets – just yes/no). */
-  @Get('methods') methods() {
-    return { BKASH_GATEWAY: Bkash.configured(), SSLCOMMERZ: Sslcz.configured(), MOCK: process.env.GATEWAY_MOCK === 'true' && process.env.NODE_ENV !== 'production' };
+  @Get('methods') async methods() {
+    const row = await this.prisma.setting.findUnique({ where: { key: 'content.gateways' } });
+    const show = (row?.value ?? {}) as { bkashOn?: boolean; sslczOn?: boolean; manualOn?: boolean };
+    return {
+      BKASH_GATEWAY: Bkash.configured() && show.bkashOn !== false,
+      SSLCOMMERZ: Sslcz.configured() && show.sslczOn !== false,
+      MANUAL: show.manualOn !== false,
+      MOCK: process.env.GATEWAY_MOCK === 'true' && process.env.NODE_ENV !== 'production',
+    };
   }
 
   @Post('init') @UseGuards(JwtAuthGuard)
@@ -120,7 +127,7 @@ export class GatewayController {
     if (!o || o.userId !== r.user.id) throw new NotFoundException();
     const due = this.orders.billFor(o).due;
     if (d.amount > due) throw new BadRequestException('MORE_THAN_DUE');
-    const on = this.methods();
+    const on = await this.methods();
     if (!on[d.method]) throw new BadRequestException('GATEWAY_NOT_CONFIGURED');
     const s = await this.prisma.gatewaySession.create({ data: { userId: r.user.id, orderId: o.id, method: d.method, amount: d.amount } });
     let out: { redirectUrl: string; externalId?: string };
@@ -164,7 +171,7 @@ export class GatewayController {
   }
 
   @Get('mock/pay') async mock(@Query('s') sid: string, @Res() res: Response) {
-    if (!this.methods().MOCK) throw new NotFoundException();
+    if (!(await this.methods()).MOCK) throw new NotFoundException();
     return this.finish(sid, true, `MOCK-${Date.now()}`, { mock: true }, res);
   }
 }

@@ -171,7 +171,7 @@ export class OrdersService {
     });
     await this.audit.log({ actorId: actor.id, action: 'ORDER_STATUS', entity: 'Order', entityId: o.id, before: { status: o.status }, after: { status: to, note } });
     if (notify) {
-      await this.sms.send(o.user.phone, `DeshTori: আপনার অর্ডার ${o.code} এখন "${STATUS_LABEL_BN[to]}"। বিস্তারিত: deshtori.com/account`).catch(() => undefined);
+      await this.sms.sendTemplate(o.user.phone, to === 'ARRIVED_BD' ? 'arrived' : 'status', { code: o.code, status: STATUS_LABEL_BN[to] }, `DeshTori: আপনার অর্ডার ${o.code} এখন "${STATUS_LABEL_BN[to]}"। বিস্তারিত: deshtori.com/account`);
     }
     return updated;
   }

@@ -54,7 +54,8 @@ export class PaymentsService {
     const user = await this.prisma.user.findUnique({ where: { id: p.userId } });
     if (user) {
       const msg = ok ? `DeshTori: ৳${Math.round(p.amount / 100)} পেমেন্ট পাওয়া গেছে (${p.order?.code ?? ''})। ধন্যবাদ!` : `DeshTori: আপনার পেমেন্ট (TrxID ${p.trxId}) মেলানো যায়নি। অনুগ্রহ করে যোগাযোগ করুন 01938273878।`;
-      await this.sms.send(user.phone, msg).catch(() => undefined);
+      if (ok) await this.sms.sendTemplate(user.phone, 'payment', { code: p.order?.code ?? '', amount: `৳${Math.round(p.amount / 100)}` }, msg);
+      else await this.sms.send(user.phone, msg).catch(() => undefined);
     }
     return { ok: true };
   }
