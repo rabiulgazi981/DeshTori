@@ -6,11 +6,13 @@ import { CacheService } from '../prisma/redis.service';
 import { SettingsService } from '../settings/settings.service';
 import { MockProvider } from './mock.provider';
 import { TaobaoDatahubProvider } from './taobao-datahub.provider';
+import { Alibaba1688Provider } from './alibaba-1688.provider';
 import { Market, parseProductLink, ProductProvider, ProviderProduct, SearchOptions } from './provider';
 
 const createProvider = (): ProductProvider => {
   switch (process.env.PRODUCT_PROVIDER ?? 'mock') {
     case 'taobao-datahub': return new TaobaoDatahubProvider(process.env.RAPIDAPI_KEY ?? '', process.env.RAPIDAPI_HOST || undefined, process.env.RAPIDAPI_LOCALE || undefined);
+    case 'alibaba-1688': return new Alibaba1688Provider(process.env.RAPIDAPI_KEY ?? '', process.env.RAPIDAPI_1688_HOST || undefined);
     // case 'hiobuy': return new HioBuyProvider(process.env.PRODUCT_API_URL!, process.env.PRODUCT_API_KEY!);
     default:
       return new MockProvider();
