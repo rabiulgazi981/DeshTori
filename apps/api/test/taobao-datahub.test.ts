@@ -4,7 +4,7 @@ import { mapSearch, yuanToFen } from '../src/products/taobao-datahub.provider';
 
 const ok = (list: unknown[], total = 4034) => ({ result: { status: { code: 200 }, base: { totalResults: total }, resultList: list } });
 const item = (id: string, price: string, promo: string, type = 'tmall') => ({
-  item: { itemIdStr: id, title: 'Case', sales: '0', image: '//img.alicdn.com/a.jpg', sku: { def: { price, promotionPrice: promo } } },
+  item: { itemId: id, title: 'Case', sales: '0', image: '//img.alicdn.com/a.jpg', sku: { def: { price, promotionPrice: promo } } },
   seller: { storeType: type },
 });
 
@@ -28,4 +28,11 @@ test('items without id or price are skipped; code 205 is empty; other codes thro
   assert.equal(mapSearch(ok([item('', '5.00', '5.00'), item('t', '0', '0')])).items.length, 0);
   assert.deepEqual(mapSearch({ result: { status: { code: 205 } } }), { items: [], total: 0 });
   assert.throws(() => mapSearch({ result: { status: { code: 500, msg: 'x' } } }));
+});
+
+test('real Bellroy result: numeric id, fen with decimals, promo below price', () => {
+  const r = mapSearch(ok([item('709942285014', '629.00', '198.55')]));
+  assert.equal(r.items[0].sourceId, '709942285014');
+  assert.equal(r.items[0].fen, 62900);
+  assert.equal(r.items[0].promoFen, 19855);
 });
