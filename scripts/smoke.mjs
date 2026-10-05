@@ -105,6 +105,13 @@ check('staff password step → needs OTP', r.json?.needOtp === true && r.json.de
 r = await call('s', 'POST', '/auth/staff/verify', { phone: owner, code: r.json?.devCode });
 check('staff 2FA verify', r.status === 200, r);
 
+r = await call('s', 'GET', '/admin/sms/status');
+check('owner sees SMS gateway status (dev: console, no key leaked)', r.status === 200 && r.json?.provider === 'console' && r.json?.live === false && !JSON.stringify(r.json).match(/key/i), r);
+r = await call('s', 'POST', '/admin/sms/test', { phone: '01712345678' });
+check('owner test SMS', r.status === 200 && r.json?.ok === true, r);
+r = await call('c', 'GET', '/admin/sms/status');
+check('customer blocked from SMS settings', r.status === 401 || r.status === 403, r);
+
 r = await call('s', 'GET', '/admin/payments/pending');
 const pay = r.json?.find?.((p) => p.order?.code === order.code);
 check('pending payment visible to staff', !!pay, r);

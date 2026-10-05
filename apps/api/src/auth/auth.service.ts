@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
@@ -53,7 +53,14 @@ export class AuthService {
     await this.prisma.otpCode.create({
       data: { phone, purpose, codeHash: this.hashOtp(phone, code), expiresAt: new Date(Date.now() + OTP_TTL_MIN * 60_000) },
     });
-    await this.sms.send(phone, `DeshTori কোড: ${code}। ${OTP_TTL_MIN} মিনিট কাজ করবে। কাউকে বলবেন না।`);
+    try {
+      await this.sms.send(phone, `DeshTori কোড: ${code}। ${OTP_TTL_MIN} মিনিট কাজ করবে। কাউকে বলবেন না।`);
+    } catch (e) {
+      // gateway down / no balance: let the customer retry right away, tell them plainly
+      await this.cache.del(`otp:cool:${phone}`);
+      this.log.error(`OTP SMS to ${phone} failed: ${(e as Error).message}`);
+      throw new ServiceUnavailableException('SMS_FAILED');
+    }
     const echo = process.env.OTP_DEV_ECHO === 'true' && process.env.NODE_ENV !== 'production';
     return { sent: true, ttlMinutes: OTP_TTL_MIN, ...(echo ? { devCode: code } : {}) };
   }
