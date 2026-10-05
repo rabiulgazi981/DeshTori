@@ -58,7 +58,7 @@ export default function OrderDetail({ params }: { params: { code: string } }) {
       </PageHead>
       <Msg m={act.msg} />
       <div className="mt-3 grid gap-4 xl:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-4 xl:col-span-2">
+        <div className="flex flex-col gap-4 xl:col-span-2">
           <Panel title="পণ্য ও ক্রয়">
             <Table head={['পণ্য', 'ভ্যারিয়েন্ট', 'পরিমাণ', 'সাপ্লায়ার দাম', 'গ্রাহকের দাম', 'আসল ক্রয় দাম (¥ পয়সা)', 'কেনা', 'পৌঁছেছে', 'QC']} min={1000}>
               {o.items.map((i) => (
@@ -130,7 +130,7 @@ export default function OrderDetail({ params }: { params: { code: string } }) {
           </Panel>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <Panel title="গ্রাহক">
             <Link href={`/admin/customers/${o.user.id}`} className="font-bold underline">{o.user.name}</Link>
             <span className="text-sm">{o.user.phone} · শিপিং মার্ক <b>{o.user.customerCode}</b></span>
