@@ -10,7 +10,7 @@ import { Market, parseProductLink, ProductProvider, ProviderProduct, SearchOptio
 
 const createProvider = (): ProductProvider => {
   switch (process.env.PRODUCT_PROVIDER ?? 'mock') {
-    case 'taobao-datahub': return new TaobaoDatahubProvider(process.env.RAPIDAPI_KEY ?? '', process.env.RAPIDAPI_HOST || undefined);
+    case 'taobao-datahub': return new TaobaoDatahubProvider(process.env.RAPIDAPI_KEY ?? '', process.env.RAPIDAPI_HOST || undefined, process.env.RAPIDAPI_LOCALE || undefined);
     // case 'hiobuy': return new HioBuyProvider(process.env.PRODUCT_API_URL!, process.env.PRODUCT_API_KEY!);
     default:
       return new MockProvider();

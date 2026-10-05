@@ -46,8 +46,17 @@ pnpm dev                                     # web: http://localhost:3000  api: 
 - ডেভেলপমেন্টে SMS যায় না; `GATEWAY_MOCK=true` থাকলে “টেস্ট পেমেন্ট” বাটনে পেমেন্ট পরীক্ষা করা যায়।
 - প্রোডাক্ট ডেটা আসে নমুনা (mock) প্রোভাইডার থেকে, যতদিন আসল API ঠিক না হয়।
 
-## আসল 1688/Taobao API যুক্ত করা
-`apps/api/src/products/provider.ts`-এর `ProductProvider` ইন্টারফেস মেনে একটা ক্লাস লিখুন (যেমন `hiobuy.provider.ts`), তারপর `products.service.ts`-এর `createProvider()`-এ যোগ করে `.env`-এ `PRODUCT_PROVIDER=hiobuy` দিন। বাকি সাইটে কিছু বদলাতে হবে না।
+## আসল পণ্যের ডেটা (Taobao / Tmall)
+এখন যুক্ত আছে RapidAPI-র **Taobao DataHub** — সার্চ ও পণ্যের বিস্তারিত (ভেরিয়েন্ট, স্টক, ছবি, দোকান)। এতে **1688-এর ডেটা নেই**; 1688 লিংক দিলে "পাওয়া যায়নি" আসবে।
+
+চালু করতে `apps/api/.env`-এ:
+```
+PRODUCT_PROVIDER=taobao-datahub
+RAPIDAPI_KEY=<আপনার নতুন key>      # শুধু সার্ভারে, কখনো GitHub-এ না
+RAPIDAPI_LOCALE=en_US               # ঐচ্ছিক — প্ল্যানে থাকলে ইংরেজি টাইটেল
+```
+- পণ্যের বিস্তারিতের গঠন না মিললে API লগে `taobao-datahub detail: ... (keys seen: ...)` লাইন আসবে — সেটা ডেভেলপারকে পাঠান।
+- অন্য প্রোভাইডার (1688-এর জন্য): `apps/api/src/products/provider.ts`-এর `ProductProvider` মেনে নতুন ক্লাস, তারপর `products.service.ts`-এর `createProvider()`-এ যোগ।
 
 ## যা হয়েছে (v0.2)
 - [x] দাম, টিয়ার, অ্যাডভান্স, কুপন, ফ্রেইট, বিল – shared প্যাকেজ + টেস্ট
@@ -65,7 +74,9 @@ pnpm dev                                     # web: http://localhost:3000  api: 
 - [x] CI: টাইপচেক, বিল্ড, ১০০+ ধাপের end-to-end টেস্ট, ৩৯০px ও ডেস্কটপ স্ক্রিনশট
 
 ## বাকি
-- [ ] আসল 1688/Taobao প্রোডাক্ট API (প্রোভাইডার বাছাই হলে adapter)
+- [x] Taobao/Tmall আসল ডেটা (RapidAPI Taobao DataHub) — সার্চ ও বিস্তারিত
+- [ ] আসল key দিয়ে বিস্তারিত একবার মিলিয়ে দেখা; ছবি দিয়ে খোঁজা (DataHub)
+- [ ] 1688-এর জন্য আলাদা প্রোভাইডার
 - [ ] Nagad সরাসরি গেটওয়ে (এখন SSLCommerz দিয়ে Nagad চলে)
 - [ ] WhatsApp Business API ও ইমেইল নোটিফিকেশন (এখন SMS + WhatsApp লিংক)
 - [ ] সার্ভারে লাইভ করা (VPS, ডোমেইন, SSL)

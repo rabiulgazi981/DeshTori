@@ -15,6 +15,7 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @deshtori/shared build
       - run: pnpm --filter @deshtori/shared test
+      - run: scripts/ci-run.sh pnpm --filter @deshtori/api test
       - run: pnpm --filter @deshtori/api exec prisma generate
       - run: scripts/ci-run.sh pnpm --filter @deshtori/api typecheck
       - run: scripts/ci-run.sh pnpm --filter @deshtori/web typecheck
