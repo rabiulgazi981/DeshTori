@@ -1,0 +1,534 @@
+// DeshTori Door To Door – database schema
+// Money: integer paisa (BDT) / fen (CNY). Never floats.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Users & auth ─────────────────────────
+
+enum UserKind {
+  CUSTOMER
+  STAFF
+}
+
+enum StaffRole {
+  OWNER
+  BD_ORDER
+  CN_PURCHASE
+  CN_WAREHOUSE
+  SHIPMENT
+  BD_DELIVERY
+  ACCOUNTS
+}
+
+enum BuyerType {
+  PERSONAL
+  BUSINESS
+}
+
+model User {
+  id             String     @id @default(cuid())
+  kind           UserKind   @default(CUSTOMER)
+  phone          String     @unique // E.164 +8801XXXXXXXXX
+  phoneVerified  Boolean    @default(false)
+  email          String?    @unique
+  name           String?
+  passwordHash   String?
+  customerCode   String?    @unique // shipping mark DT-2041
+  buyerType      BuyerType?
+  roles          StaffRole[]
+  isBlocked      Boolean    @default(false)
+  failedLogins   Int        @default(0)
+  lockedUntil    DateTime?
+  walletPaisa    Int        @default(0)
+  notifyPrefs    Json?      // { status: {sms,wa,mail}, ... }
+  internalNote   String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  addresses   Address[]
+  cart        CartItem[]
+  orders      Order[]
+  shipRequests ShipRequest[]
+  walletTxns  WalletTxn[]
+  sessions    Session[]
+  tickets     Ticket[]
+  complaints  Complaint[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent String?
+  ip        String?
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum OtpPurpose {
+  REGISTER
+  RESET_PASSWORD
+  STAFF_2FA
+  CHANGE_PHONE
+}
+
+model OtpCode {
+  id        String     @id @default(cuid())
+  phone     String
+  purpose   OtpPurpose
+  codeHash  String
+  attempts  Int        @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime   @default(now())
+
+  @@index([phone, purpose])
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   // বাসা / দোকান
+  name      String
+  phone     String
+  district  String
+  area      String
+  line      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────── Settings ─────────────────────────
+
+/// Key-value settings editable from admin (rate, margin, advance plans, notice bar...)
+model Setting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+model FreightCategory {
+  id        String  @id @default(cuid())
+  code      String  @unique // A, B, C
+  nameBn    String
+  itemsBn   String  // list shown in the popup
+  airPaisa  Int     // per kg
+  seaPaisa  Int
+  minKg     Float   @default(0)
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+}
+
+model BlockedKeyword {
+  id        String   @id @default(cuid())
+  keyword   String   @unique
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────── Catalog cache ─────────────────────────
+
+enum Marketplace {
+  M1688
+  TAOBAO
+  TMALL
+}
+
+/// Products we have fetched or sold – our own catalog, refreshed from the provider when stale.
+model Product {
+  id            String      @id @default(cuid())
+  marketplace   Marketplace
+  sourceId      String      // offer/item id on 1688/Taobao
+  sourceUrl     String
+  titleEn       String
+  titleZh       String?
+  images        String[]
+  sellerName    String?
+  sellerLocation String?
+  attributes    Json?       // brand, material...
+  skus          Json        // [{skuId, props:{Color,Size}, fen, stock, image}]
+  priceTiers    Json?       // [{minQty, fen}]
+  weightKg      Float?
+  freightCategory String?   // A/B/C guess
+  soldCount     Int?
+  fetchedAt     DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+
+  @@unique([marketplace, sourceId])
+}
+
+// ───────────────────────── Cart & orders ─────────────────────────
+
+enum ShipMode {
+  AIR
+  SEA
+}
+
+model CartItem {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId  String
+  skuId      String
+  skuLabel   String
+  qty        Int
+  shipMode   ShipMode @default(AIR)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, productId, skuId])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_REVIEW
+  NEW
+  PURCHASING
+  NEEDS_DECISION
+  AT_CN_WAREHOUSE
+  SHIPPED
+  ARRIVED_BD
+  DELIVERED
+  CANCELLED
+}
+
+enum DeliveryMethod {
+  COURIER_HOME
+  OFFICE_PICKUP
+  CONDITION_COD
+  TRUCK
+}
+
+model Order {
+  id              String         @id @default(cuid())
+  code            String         @unique // DT-10482
+  userId          String
+  user            User           @relation(fields: [userId], references: [id])
+  status          OrderStatus    @default(PENDING_PAYMENT)
+  shipMode        ShipMode
+  // locked at order time
+  cnyRate         Float
+  marginPct       Float
+  advancePct      Int
+  advanceDiscPct  Float
+  couponCode      String?
+  subtotalPaisa   Int
+  discountPaisa   Int
+  couponPaisa     Int            @default(0)
+  payNowPaisa     Int
+  paidPaisa       Int            @default(0)
+  deliveryMethod  DeliveryMethod @default(COURIER_HOME)
+  addressSnapshot Json
+  note            String?
+  finalWeightKg   Float?
+  shipmentId      String?
+  shipment        Shipment?      @relation(fields: [shipmentId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  items      OrderItem[]
+  charges    OrderCharge[]
+  payments   Payment[]
+  events     OrderEvent[]
+  decisions  Decision[]
+  qcPhotos   QcPhoto[]
+  invoiceLinks InvoiceOrder[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  title         String
+  image         String?
+  sourceUrl     String
+  skuId         String
+  skuLabel      String
+  qty           Int
+  unitFen       Int     // supplier price at order time
+  unitPaisa     Int     // customer price at order time
+  // filled by China team
+  actualFen     Int?
+  purchasedQty  Int?
+  receivedQty   Int?
+  qcStatus      String?
+}
+
+/// Extra bill lines added during the workflow (local courier, freight, packaging...)
+model OrderCharge {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  code      String   // CN_LOCAL_COURIER, PACKAGING, FREIGHT, EXTRA_SERVICE, BD_COURIER, ADJUSTMENT
+  label     String
+  amount    Int      // paisa, negative allowed for adjustments
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus?
+  toStatus   OrderStatus?
+  note      String?
+  internal  Boolean  @default(false)
+  actorId   String?
+  createdAt DateTime @default(now())
+}
+
+enum DecisionAnswer {
+  PENDING
+  YES
+  NO
+}
+
+model Decision {
+  id          String         @id @default(cuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId      String?
+  issue       String
+  proposal    String
+  diffPaisa   Int            @default(0)
+  answer      DecisionAnswer @default(PENDING)
+  answeredVia String?        // link, call
+  token       String         @unique // for yes/no link in SMS/WhatsApp
+  reminders   Int            @default(0)
+  createdBy   String?
+  createdAt   DateTime       @default(now())
+  answeredAt  DateTime?
+}
+
+model QcPhoto {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────── Payments & wallet ─────────────────────────
+
+enum PaymentMethod {
+  BKASH_GATEWAY
+  NAGAD_GATEWAY
+  SSLCOMMERZ
+  MANUAL_BKASH
+  MANUAL_NAGAD
+  MANUAL_BANK
+  WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId     String?
+  order       Order?        @relation(fields: [orderId], references: [id])
+  userId      String
+  method      PaymentMethod
+  amount      Int
+  trxId       String?
+  fromNumber  String?
+  screenshot  String?
+  status      PaymentStatus @default(PENDING)
+  verifiedBy  String?
+  verifiedAt  DateTime?
+  raw         Json?         // gateway response
+  createdAt   DateTime      @default(now())
+
+  @@index([status])
+}
+
+enum WalletTxnType {
+  REFUND
+  ORDER_PAYMENT
+  WITHDRAWAL
+  ADJUSTMENT
+}
+
+model WalletTxn {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  type      WalletTxnType
+  amount    Int           // +credit / -debit
+  note      String
+  orderId   String?
+  createdBy String?
+  createdAt DateTime      @default(now())
+}
+
+model Withdrawal {
+  id        String   @id @default(cuid())
+  userId    String
+  method    String   // BKASH / BANK
+  account   String
+  amount    Int
+  status    String   @default("PENDING") // PENDING / SENT / REJECTED
+  trxId     String?
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+}
+
+model Coupon {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  type        String   // PERCENT / FLAT / FREIGHT_PERCENT / FREE_BD_DELIVERY
+  value       Int
+  minOrder    Int?
+  maxDiscount Int?
+  usageLimit  Int?
+  perUser     Int      @default(1)
+  used        Int      @default(0)
+  firstOrderOnly Boolean @default(false)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  active      Boolean  @default(true)
+}
+
+// ───────────────────────── Logistics ─────────────────────────
+
+model Shipment {
+  id         String    @id @default(cuid())
+  code       String    @unique // SHIP-0012
+  mode       ShipMode
+  route      String    // GZ_AIR / HK_AIR / SEA
+  carrier    String?
+  awb        String?
+  costPaisa  Int?
+  status     String    @default("SHIPPED")
+  sentAt     DateTime?
+  arrivedAt  DateTime?
+  orders     Order[]
+  shipRequests ShipRequest[]
+}
+
+/// "Ship for me" – customer bought themselves and sends to our warehouse
+model ShipRequest {
+  id            String   @id @default(cuid())
+  code          String   @unique // SHP-10023
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  warehouse     String   // GZ_AIR / HK_AIR / SEA
+  trackingNo    String
+  cartons       Int
+  totalPieces   Int
+  description   String
+  category      String
+  extraService  String   // NONE / PAYMENT / SPECIAL_PACKING / INSPECTION
+  status        String   @default("AWAITING_ARRIVAL")
+  receivedCartons Int?
+  receivedPieces Int?
+  weightKg      Float?
+  shipmentId    String?
+  shipment      Shipment? @relation(fields: [shipmentId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  code      String   @unique // INV-2041
+  userId    String
+  kind      String   // DELIVERY / ADVANCE / SHIP_REQUEST / CUSTOM
+  lines     Json     // BillLine[] snapshot
+  totalPaisa Int
+  paidPaisa Int
+  status    String   @default("DUE") // DUE / PAID / VOID
+  createdBy String?
+  createdAt DateTime @default(now())
+  orders    InvoiceOrder[]
+}
+
+model InvoiceOrder {
+  invoiceId String
+  orderId   String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  order     Order   @relation(fields: [orderId], references: [id])
+
+  @@id([invoiceId, orderId])
+}
+
+// ───────────────────────── Support ─────────────────────────
+
+model Ticket {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  subject   String
+  status    String   @default("OPEN") // OPEN / ANSWERED / CLOSED
+  assignee  String?
+  messages  Json     // [{from:'customer'|'staff', text, at, staffId?}]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Complaint {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  orderId    String
+  itemId     String?
+  kind       String   // DAMAGED / SHORT / WRONG_VARIANT / WRONG_ITEM / OTHER
+  qty        Int
+  wants      String   // REFUND / REPLACE / PARTIAL
+  details    String
+  media      String[]
+  status     String   @default("REVIEW")
+  resolution String?
+  createdAt  DateTime @default(now())
+}
+
+// ───────────────────────── Audit & accounting ─────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String   // e.g. SETTING_UPDATE, ORDER_STATUS, PAYMENT_VERIFY
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
+
+/// Money entries are never deleted – only corrected by a new entry.
+model LedgerEntry {
+  id        String   @id @default(cuid())
+  kind      String   // INCOME / EXPENSE / SUPPLIER / REFUND / TRANSFER
+  category  String
+  amount    Int      // paisa (positive)
+  orderId   String?
+  shipmentId String?
+  note      String?
+  receipt   String?
+  correctsId String?
+  createdBy String
+  createdAt DateTime @default(now())
+}

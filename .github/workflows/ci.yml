@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @deshtori/shared build
+      - run: pnpm --filter @deshtori/shared test
+      - run: pnpm --filter @deshtori/api exec prisma generate
+      - run: pnpm --filter @deshtori/api typecheck
+      - run: pnpm --filter @deshtori/web typecheck
+      - run: pnpm --filter @deshtori/web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000/api

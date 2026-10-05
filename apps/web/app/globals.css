@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html[data-theme='dark'] { color-scheme: dark; }
+body { @apply bg-ivory text-navy font-sans antialiased; }
+html[data-theme='dark'] body { background: #0B1630; color: #E6ECF8; }
+
+@layer components {
+  .card { @apply bg-white border border-ivory-line rounded-2xl shadow-card; }
+  html[data-theme='dark'] .card { background: #121F3D; border-color: #2A3B66; box-shadow: none; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl font-bold min-h-[44px] px-5 transition active:translate-y-px disabled:opacity-50; }
+  .btn-gold { @apply btn text-navy shadow-gold; background-image: linear-gradient(180deg, #F9E39A 0%, #D9AE45 48%, #B07E22 100%); }
+  .btn-navy { @apply btn text-white; background-image: linear-gradient(180deg, #1A3C8A 0%, #0E2A6B 55%, #0A1F52 100%); }
+  .btn-outline { @apply btn border border-navy text-navy bg-white font-semibold; }
+  .input { @apply w-full rounded-xl border-2 border-ivory-line bg-white px-3.5 py-3 text-base text-navy outline-none focus:border-gold; }
+  html[data-theme='dark'] .input { background: #0F1A35; color: #E6ECF8; border-color: #2A3B66; }
+  .chip { @apply inline-flex items-center rounded-full px-3 py-0.5 text-xs font-bold; }
+  .label { @apply flex flex-col gap-1.5 text-sm font-semibold; }
+  .brand-text { font-family: var(--font-cinzel); background: linear-gradient(180deg, #FCEBB0, #D9AE45 52%, #A8781E); -webkit-background-clip: text; background-clip: text; color: transparent; }
+}
+
+/* running notice bar */
+.dt-ticker { mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%); }
+.dt-track { display: inline-flex; gap: 96px; white-space: nowrap; animation: dt-marquee var(--dt-speed, 30s) linear infinite; }
+.dt-ticker:hover .dt-track, .dt-ticker:active .dt-track, .dt-ticker:focus-within .dt-track { animation-play-state: paused; }
+@keyframes dt-marquee { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 48px)); } }
+@media (prefers-reduced-motion: reduce) { .dt-track { animation: none; white-space: normal; display: block; } .dt-track > [aria-hidden] { display: none; } }
+
+:focus-visible { outline: 3px solid #D4A93A; outline-offset: 2px; }
