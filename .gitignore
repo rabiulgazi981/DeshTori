@@ -11,3 +11,4 @@ coverage/
 .turbo/
 apps/api/uploads/
 /apps/api/uploads/
+*.tsbuildinfo
