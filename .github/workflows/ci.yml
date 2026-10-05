@@ -21,3 +21,46 @@ jobs:
       - run: pnpm --filter @deshtori/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000/api
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: deshtori
+          POSTGRES_PASSWORD: deshtori
+          POSTGRES_DB: deshtori
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U deshtori" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgresql://deshtori:deshtori@localhost:5432/deshtori?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-secret
+      OTP_DEV_ECHO: 'true'
+      NODE_ENV: test
+      SEED_OWNER_PHONE: '+8801938273878'
+      SEED_OWNER_PASSWORD: owner12345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @deshtori/shared build
+      - run: pnpm --filter @deshtori/api exec prisma db push --skip-generate=false
+      - run: pnpm --filter @deshtori/api prisma:seed
+      - run: pnpm --filter @deshtori/api build
+      - name: Start API and run smoke test
+        run: |
+          node apps/api/dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:4000/api/health && break; sleep 1; done
+          node scripts/smoke.mjs | tee smoke.log
+      - if: always()
+        run: |
+          echo "::group::api.log"; tail -n 80 api.log || true; echo "::endgroup::"
+          grep '✗' smoke.log | while read l; do echo "::error::$l"; done || true
