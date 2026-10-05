@@ -15,7 +15,7 @@ interface Order {
   decisions: { id: string; issue: string; proposal: string; diffPaisa: number; answer: string; token: string }[];
   bill: { lines: { label: string; amount: number }[]; total: number; paid: number; due: number };
 }
-const FLOW = ORDER_STATUSES.filter((s) => s !== 'CANCELLED' && s !== 'NEEDS_DECISION' && s !== 'PAYMENT_REVIEW');
+const FLOW: OrderStatus[] = ORDER_STATUSES.filter((s) => s !== 'CANCELLED' && s !== 'NEEDS_DECISION' && s !== 'PAYMENT_REVIEW');
 
 export default function OrderPage({ params }: { params: { code: string } }) {
   const router = useRouter();
