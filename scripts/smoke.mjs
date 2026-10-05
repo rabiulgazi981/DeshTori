@@ -211,7 +211,7 @@ check('order SHIPPED via shipment', r.json?.status === 'SHIPPED', r.json?.status
 r = await call('s', 'PATCH', `/admin/shipments/${ship.code}`, { status: 'ARRIVED_BD' });
 check('shipment arrived', r.status === 200, r);
 r = await call('c', 'GET', '/ship-requests');
-check('parcel ARRIVED_BD', r.json?.[0]?.status === 'ARRIVED_BD', r.json?.[0]);
+check('parcel ARRIVED_BD with freight bill 18kg × ৳760', r.json?.[0]?.status === 'ARRIVED_BD' && r.json[0].chargePaisa === 1368000, r.json?.[0]);
 r = await call('c', 'GET', `/orders/${order2.code}`);
 check('order ARRIVED_BD', r.json?.status === 'ARRIVED_BD', r.json?.status);
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatBdt, quoteCheckout, toBanglaDigits } from '@deshtori/shared';
 import { api, ApiError, errText } from '@/lib/api';
+import { PayBox } from '@/components/PayBox';
 
 interface CartRow { id: string; label: string; qty: number; shipMode: 'AIR' | 'SEA'; unitPaisa: number; inStock: boolean }
 interface CartGroup { productId: string; title: string; image?: string; market: string; sourceId: string; rows: CartRow[] }
@@ -29,13 +30,14 @@ export default function CartPage() {
   const [delivery, setDelivery] = useState<(typeof DELIVERY)[number][0]>('COURIER_HOME');
   const [newAddr, setNewAddr] = useState({ label: 'বাসা', name: '', phone: '', district: 'ঢাকা', area: '', line: '' });
   const [placed, setPlaced] = useState<Placed | null>(null);
-  const [trx, setTrx] = useState({ trxId: '', fromNumber: '' });
+  const [wallet, setWallet] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [c, a] = await Promise.all([api<CartView>('/cart'), api<Address[]>('/account/addresses')]);
+      const [c, a, w] = await Promise.all([api<CartView>('/cart'), api<Address[]>('/account/addresses'), api<{ balancePaisa: number }>('/account/wallet')]);
+      setWallet(w.balancePaisa);
       setCart(c);
       setAddresses(a);
       if (a[0]) setAddressId((x) => x || a[0].id);
@@ -78,22 +80,6 @@ export default function CartPage() {
       const r = await api<Placed>('/checkout', { method: 'POST', json: { advancePercent: plan, couponCode: coupon || undefined, addressId, deliveryMethod: delivery } });
       setPlaced(r);
       setStep(2);
-    } catch (e) {
-      setErr(errText(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const submitPayment = async () => {
-    if (!placed) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      for (const o of placed.orders) {
-        await api('/payments/manual', { method: 'POST', json: { orderCode: o.code, method: 'MANUAL_BKASH', amount: o.payNowPaisa, trxId: trx.trxId, fromNumber: trx.fromNumber } });
-      }
-      router.push('/account?placed=1');
     } catch (e) {
       setErr(errText(e));
     } finally {
@@ -171,13 +157,8 @@ export default function CartPage() {
           <section className="card flex flex-col gap-3 p-5">
             <h1 className="text-2xl font-bold">পেমেন্ট</h1>
             <p>অর্ডার: {placed.orders.map((o) => <b key={o.code} className="mr-2 rounded-lg bg-gold-chip px-2 text-gold-ink">{o.code}</b>)}</p>
-            <p className="rounded-2xl border border-dashed border-gold bg-[#FFFCF4] p-3">নিচের bKash নম্বরে <b>{formatBdt(placed.payNowTotal)}</b> Send Money করে TrxID দিন: <b className="text-lg">[01XXXXXXXXX]</b></p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="label">ট্রানজেকশন আইডি (TrxID)<input className="input" value={trx.trxId} onChange={(e) => setTrx({ ...trx, trxId: e.target.value })} /></label>
-              <label className="label">যে নম্বর থেকে পাঠিয়েছেন<input className="input" value={trx.fromNumber} onChange={(e) => setTrx({ ...trx, fromNumber: e.target.value })} /></label>
-            </div>
-            <button disabled={busy || !trx.trxId} onClick={submitPayment} className="btn-gold self-start">পেমেন্ট জমা দিন</button>
-            <p className="text-xs text-muted">bKash/Nagad/কার্ড গেটওয়ে মার্চেন্ট কী পেলে এখানে যুক্ত হবে।</p>
+            {placed.orders.map((o) => <PayBox key={o.code} orderCode={o.code} amount={o.payNowPaisa} wallet={wallet} onDone={() => router.push(`/account/orders/${o.code}`)} />)}
+            <Link href="/account" className="text-sm underline">পরে পরিশোধ করব — আমার অর্ডারে যান</Link>
           </section>
         )}
       </div>

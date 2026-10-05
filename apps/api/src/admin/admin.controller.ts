@@ -65,9 +65,9 @@ class WithdrawalDto {
 }
 
 /** Keys of free-form site content editable from the admin panel. */
-export const CONTENT_KEYS = ['videos', 'banners', 'services', 'popup', 'seo', 'contact', 'blog', 'pages', 'campaign', 'smsTemplates', 'gateways', 'abandonedCart', 'categories'] as const;
+export const CONTENT_KEYS = ['videos', 'banners', 'services', 'popup', 'seo', 'contact', 'blog', 'pages', 'campaign', 'smsTemplates', 'gateways', 'abandonedCart', 'categories', 'warehouses'] as const;
 /** Content keys the public website may read. smsTemplates/gateways/abandonedCart stay staff-only. */
-export const PUBLIC_CONTENT = ['videos', 'banners', 'services', 'popup', 'seo', 'contact', 'blog', 'pages', 'campaign', 'categories'];
+export const PUBLIC_CONTENT = ['videos', 'banners', 'services', 'popup', 'seo', 'contact', 'blog', 'pages', 'campaign', 'categories', 'warehouses'];
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { formatBdt } from '@deshtori/shared';
 import { api, ApiError, errText } from '@/lib/api';
 import type { Me } from '@/lib/types';
@@ -42,6 +43,11 @@ export default function AccountPage() {
         <div className="flex flex-col gap-1 rounded-2xl bg-navy p-4 text-white"><span className="text-sm text-[#C8D3EA]">ওয়ালেট ব্যালেন্স</span><b className="text-3xl text-gold-light">{formatBdt(me.walletPaisa)}</b></div>
         <div className="card flex items-center justify-between gap-3 p-4"><span>অ্যাকাউন্ট ম্যানেজার: <b>01938-27 38 78</b></span><button onClick={logout} className="btn-outline">লগআউট</button></div>
       </div>
+      <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="অ্যাকাউন্ট মেনু">
+        {[['/ship', '🚚', 'আমার শিপিং পার্সেল'], ['/account/wallet', '💰', 'ওয়ালেট ও উত্তোলন'], ['/account/invoices', '🧾', 'ইনভয়েস'], ['/support', '💬', 'সাপোর্ট টিকেট'], ['/wishlist', '♡', 'উইশলিস্ট'], ['/account/addresses', '📍', 'ঠিকানা'], ['/account/profile', '⚙️', 'প্রোফাইল ও নোটিফিকেশন']].map(([href, icon, label]) => (
+          <Link key={href} href={href} className="card flex min-h-[56px] items-center gap-2 px-3 py-2 text-sm font-semibold"><span aria-hidden="true">{icon}</span>{label}</Link>
+        ))}
+      </nav>
       <section className="card flex flex-col gap-3 p-4">
         <h1 className="text-xl font-bold">আমার অর্ডার</h1>
         <div className="overflow-x-auto rounded-xl border border-ivory-line">
@@ -50,7 +56,7 @@ export default function AccountPage() {
             <tbody>
               {orders.map((o) => (
                 <tr key={o.code} className="border-t border-ivory-line">
-                  <td className="p-3 font-bold">{o.code}</td>
+                  <td className="p-3 font-bold"><Link href={`/account/orders/${o.code}`} className="underline">{o.code}</Link></td>
                   <td className="p-3">{new Date(o.createdAt).toLocaleDateString('bn-BD')}</td>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <td className="p-3"><span className="flex gap-1">{o.images.filter(Boolean).slice(0, 2).map((src) => <img key={src!} src={src!} alt="" className="h-9 w-9 rounded-lg object-cover" />)}</span></td>

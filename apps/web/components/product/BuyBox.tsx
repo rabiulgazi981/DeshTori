@@ -50,6 +50,16 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
     }
   };
 
+  const wish = async () => {
+    try {
+      await api('/wishlist', { method: 'POST', json: { market: p.market, id: p.sourceId } });
+      setMsg('♡ উইশলিস্টে রাখা হয়েছে');
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) router.push(`/login?next=${encodeURIComponent(location.pathname)}`);
+      else setMsg(errText(e));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {/* price tiers */}
@@ -138,6 +148,7 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
         <div className="flex gap-2.5">
           <button disabled={busy} onClick={() => addToCart(false)} className="btn-navy flex-1">🛒 কার্টে রাখুন</button>
           <button disabled={busy} onClick={() => addToCart(true)} className="btn-gold flex-1">⚡ এখনই কিনুন</button>
+          <button disabled={busy} onClick={wish} aria-label="উইশলিস্টে রাখুন" className="btn-outline w-12 flex-none px-0 text-xl">♡</button>
         </div>
       </div>
 

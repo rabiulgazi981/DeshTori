@@ -161,6 +161,6 @@ export class AuthService {
   }
 
   publicUser(u: User) {
-    return { id: u.id, phone: u.phone, name: u.name, email: u.email, kind: u.kind, roles: u.roles, customerCode: u.customerCode, walletPaisa: u.walletPaisa, buyerType: u.buyerType };
+    return { id: u.id, phone: u.phone, name: u.name, email: u.email, kind: u.kind, roles: u.roles, customerCode: u.customerCode, walletPaisa: u.walletPaisa, buyerType: u.buyerType, notifyPrefs: u.notifyPrefs };
   }
 }

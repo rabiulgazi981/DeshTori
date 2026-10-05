@@ -1,5 +1,6 @@
 import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { freightCharge } from '@deshtori/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../prisma/audit.service';
 import { SmsService } from '../notify/sms.service';
@@ -62,7 +63,12 @@ export class ShipController {
   async update(@Req() r: AuthedRequest, @Param('code') code: string, @Body() d: ReceiveDto) {
     const sr = await this.prisma.shipRequest.findUnique({ where: { code }, include: { user: true } });
     if (!sr) throw new NotFoundException();
-    const up = await this.prisma.shipRequest.update({ where: { code }, data: d });
+    let chargePaisa: number | undefined;
+    if (d.weightKg) {
+      const cat = await this.prisma.freightCategory.findUnique({ where: { code: sr.category } });
+      if (cat) chargePaisa = freightCharge(d.weightKg, { category: cat.code, mode: sr.warehouse === 'SEA' ? 'SEA' : 'AIR', perKgPaisa: sr.warehouse === 'SEA' ? cat.seaPaisa : cat.airPaisa, minKg: cat.minKg });
+    }
+    const up = await this.prisma.shipRequest.update({ where: { code }, data: { ...d, ...(chargePaisa !== undefined ? { chargePaisa } : {}) } });
     await this.audit.log({ actorId: r.user.id, action: 'SHIP_REQUEST_UPDATE', entity: 'ShipRequest', entityId: sr.id, before: { status: sr.status }, after: d });
     if (d.status !== sr.status) {
       const short = d.status === 'RECEIVED' && d.receivedCartons !== undefined && d.receivedCartons < sr.cartons ? ` (কার্টন ${d.receivedCartons}/${sr.cartons} পাওয়া গেছে)` : '';

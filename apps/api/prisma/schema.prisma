@@ -442,6 +442,7 @@ model ShipRequest {
   receivedCartons Int?
   receivedPieces Int?
   weightKg      Float?
+  chargePaisa   Int?     // freight bill, set when the warehouse weighs it
   shipmentId    String?
   shipment      Shipment? @relation(fields: [shipmentId], references: [id])
   createdAt     DateTime @default(now())
