@@ -5,10 +5,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../prisma/redis.service';
 import { SettingsService } from '../settings/settings.service';
 import { MockProvider } from './mock.provider';
+import { TaobaoDatahubProvider } from './taobao-datahub.provider';
 import { Market, parseProductLink, ProductProvider, ProviderProduct, SearchOptions } from './provider';
 
 const createProvider = (): ProductProvider => {
   switch (process.env.PRODUCT_PROVIDER ?? 'mock') {
+    case 'taobao-datahub': return new TaobaoDatahubProvider(process.env.RAPIDAPI_KEY ?? '', process.env.RAPIDAPI_HOST || undefined);
     // case 'hiobuy': return new HioBuyProvider(process.env.PRODUCT_API_URL!, process.env.PRODUCT_API_KEY!);
     default:
       return new MockProvider();
