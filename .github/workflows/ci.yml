@@ -24,6 +24,8 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     services:
       postgres:
         image: postgres:16-alpine
@@ -62,9 +64,33 @@ jobs:
           node apps/api/dist/main.js > api.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:4000/api/health && break; sleep 1; done
           node scripts/smoke.mjs | tee smoke.log
+      - name: Build web and take screenshots (390px + 1280px)
+        shell: bash
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000/api
+        run: |
+          pnpm --filter @deshtori/web build > web-build.log 2>&1 || { tail -n 30 web-build.log; exit 1; }
+          (cd apps/web && nohup npx next start -p 3000 > ../../web.log 2>&1 &)
+          for i in $(seq 1 40); do curl -sf http://localhost:3000 >/dev/null && break; sleep 1; done
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y > /dev/null && npm i playwright@1.48.2 > /dev/null
+          npx playwright install --with-deps chromium > /dev/null
+          cp "$GITHUB_WORKSPACE/scripts/shots.mjs" /tmp/pw/shots.mjs
+          set +e; node shots.mjs | tee "$GITHUB_WORKSPACE/shots.log"; status=${PIPESTATUS[0]}; set -e
+          mv /tmp/pw/shots "$GITHUB_WORKSPACE/shots"
+          exit $status
+      - name: Publish screenshots to the 'shots' branch
+        if: always()
+        shell: bash
+        run: |
+          [ -d shots ] || exit 0
+          git config user.name ci && git config user.email ci@users.noreply.github.com
+          git checkout -q --orphan shots-tmp && git rm -rfq --cached . > /dev/null
+          git add -f shots && git commit -qm "screenshots ${GITHUB_SHA::7}" && git push -fq origin HEAD:shots
       - if: always()
         run: |
           echo "::group::api.log"; tail -n 80 api.log || true; echo "::endgroup::"
+          grep '✗' shots.log 2>/dev/null | while read l; do echo "::error::shots $l"; done || true
+          [ -f shots.log ] && echo "::notice::shots: $(tail -n 1 shots.log)" || true
           grep -iE 'error|exception' api.log | head -n 8 | while read l; do echo "::error::api: $l"; done || true
           grep '✗' smoke.log | while read l; do echo "::error::$l"; done || true
           echo "::notice::smoke: $(grep -c '✓' smoke.log) passed, $(grep -c '✗' smoke.log) failed"
