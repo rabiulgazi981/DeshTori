@@ -1,4 +1,6 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+export const API_URL = typeof window === 'undefined'
+  ? process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+  : process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, public body: unknown) {

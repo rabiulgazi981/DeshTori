@@ -87,3 +87,30 @@ Product API test একটি search request করতে পারে (quota �
 1688 adapters PR #4 থেকে পুনর্ব্যবহার করা হয়েছে। বর্তমান provider-এ full variant list, image search, pagination/sorting নেই; Taobao details experimental। নতুন arbitrary provider URL অথবা Hiobuy adapter এই dashboard-এর অংশ নয়। Generic HTTP SMS URL এখনো server environment থেকে আসে।
 
 Validation: `pnpm test:dashboard` (API build + dashboard credential/settings tests)।
+# Render demo deployment
+
+Deploy the `codex/dashboard-integrations-appearance` branch as a Node Web Service
+from the repository root. Build with:
+
+```sh
+corepack enable && pnpm install --frozen-lockfile && pnpm --filter @deshtori/shared build && pnpm --filter @deshtori/api build && pnpm --filter @deshtori/web build
+```
+
+Start with `node scripts/render-start.cjs`. Set `NODE_ENV=production`,
+`NEXT_PUBLIC_API_URL=/api`, `INTERNAL_API_URL=http://127.0.0.1:4000/api`,
+`DATABASE_URL` to the Neon pooled connection, and distinct random secrets of at
+least 32 characters for `JWT_SECRET` and `INTEGRATIONS_ENCRYPTION_KEY`.
+Set `SEED_OWNER_PHONE` and `SEED_OWNER_PASSWORD` to initialize the owner and
+default freight settings on an empty database. Remove the seed password after
+the first successful deployment. Never commit secrets.
+
+The startup script uses a direct connection for versioned Prisma migrations,
+refuses to migrate an existing database without migration history, and only
+seeds when there are no users. Render's external URL supplies the public API
+URL and allowed web origin. Next.js proxies `/api` to Nest on port 4000, so
+session cookies stay on the website's origin.
+
+Free hosting is for demos: uploads on Render's local filesystem disappear on
+restart or redeployment. Add durable object storage before taking customer
+uploads. Real SMS, product providers and payment gateways require separately
+configured credentials; production console SMS deliberately refuses OTP sends.
