@@ -1,3 +1,4 @@
+import { ConfigController } from './config.controller';
 import { Module } from '@nestjs/common';
 import { OrdersModule } from '../orders/orders.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -15,6 +16,6 @@ import { UploadsController } from '../uploads/uploads.controller';
 /** Admin panel + the customer features built on top of orders. */
 @Module({
   imports: [OrdersModule, PaymentsModule, ProductsModule],
-  controllers: [AdminController, OpsController, ShipController, DecisionsController, InvoicesController, SupportController, GatewayController, WishlistController, UploadsController],
+  controllers: [ConfigController, AdminController, OpsController, ShipController, DecisionsController, InvoicesController, SupportController, GatewayController, WishlistController, UploadsController],
 })
 export class ExtrasModule {}

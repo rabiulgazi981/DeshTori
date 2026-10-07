@@ -1,3 +1,5 @@
+import { AlphaSms } from './alpha-sms';
+import { IntegrationsService } from '../integrations/integrations.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -32,20 +34,19 @@ class HttpSms implements SmsProvider {
 
 @Injectable()
 export class SmsService {
-  private provider: SmsProvider;
   private log = new Logger('SMS');
-
-  constructor(private prisma: PrismaService) {
-    const p = process.env.SMS_PROVIDER ?? 'console';
-    this.provider =
-      p === 'http' && process.env.SMS_HTTP_URL
-        ? new HttpSms(process.env.SMS_HTTP_URL, process.env.SMS_API_KEY ?? '', process.env.SMS_SENDER_ID ?? 'DeshTori')
-        : new ConsoleSms();
+  constructor(private prisma: PrismaService, private integrations: IntegrationsService) {}
+  private async provider(): Promise<SmsProvider> {
+    const c = await this.integrations.resolve('sms');
+    if (c.provider === 'alpha') return new AlphaSms(c.apiKey ?? '', c.senderId);
+    if (c.provider === 'http' && process.env.SMS_HTTP_URL) return new HttpSms(process.env.SMS_HTTP_URL, c.apiKey ?? '', c.senderId ?? 'DeshTori');
+    if (process.env.NODE_ENV === 'production') throw new Error('LIVE_SMS_PROVIDER_REQUIRED');
+    return new ConsoleSms();
   }
 
   async send(to: string, message: string) {
     try {
-      await this.provider.send(to, message);
+      await (await this.provider()).send(to, message);
     } catch (e) {
       this.log.error(`failed to send SMS to ${to}: ${(e as Error).message}`);
       throw e;

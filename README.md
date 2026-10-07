@@ -73,3 +73,17 @@ pnpm dev                                     # web: http://localhost:3000  api: 
 
 ---
 Design & Development by [BONGSHAL TECH](https://bongshaltech.com/) · © 2026 DeshTori
+
+## Dashboard থেকে API ও website control
+
+Owner-এর নতুন দুটি menu:
+- `/admin/integrations`: Product provider (mock / RapidAPI Alibaba 1688 / experimental Taobao DataHub), cache time, SMS provider ও Sender ID, bKash / SSLCommerz credentials ও Sandbox/Live environment।
+- `/admin/appearance`: primary/accent/secondary/background colors, header/footer logo upload, default Light/Dark/System theme, image-search button, shipping navigation ও mobile bottom navigation।
+
+Server-এ `INTEGRATIONS_ENCRYPTION_KEY` হিসেবে ৩২+ random character সেট করুন (অথবা বিদ্যমান ৩২+ character JWT_SECRET fallback)। Key স্থায়ী রাখুন; database backup-এর সঙ্গে encryption key নিরাপদভাবে রাখুন। Credentials AES-256-GCM encrypted হয়; dashboard শুধু configured status দেখায় এবং audit log-এ credentials যায় না। খালি password input পুরোনো key রাখে, explicit clear server environment fallback-ও নিষ্ক্রিয় করে। Dashboard-এ override না থাকলে পুরোনো environment configuration কাজ করে।
+
+Product API test একটি search request করতে পারে (quota খরচ), Alpha SMS test শুধু balance দেখে। Payment gateway configuration live transaction validation নয়। Pending gateway session শেষ হওয়ার আগে credentials/environment পরিবর্তন করবেন না। Appearance পরের page load-এ কার্যকর; visitor-এর নিজস্ব theme choice default-এর আগে ব্যবহৃত হয়। Navigation switch feature access বন্ধ করে না।
+
+1688 adapters PR #4 থেকে পুনর্ব্যবহার করা হয়েছে। বর্তমান provider-এ full variant list, image search, pagination/sorting নেই; Taobao details experimental। নতুন arbitrary provider URL অথবা Hiobuy adapter এই dashboard-এর অংশ নয়। Generic HTTP SMS URL এখনো server environment থেকে আসে।
+
+Validation: `pnpm test:dashboard` (API build + dashboard credential/settings tests)।

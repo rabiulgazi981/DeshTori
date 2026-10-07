@@ -266,6 +266,33 @@ check('image search', r.status === 201 && r.json.items.length > 0, r);
   check('fake image rejected', r.status === 400, r);
 }
 
+// Dashboard controls: ownership, secret redaction, persistence and safe logo URLs.
+r = await call('c', 'GET', '/admin/integrations');
+check('customer cannot read integrations', r.status === 403, r);
+r = await call('x', 'GET', '/admin/integrations');
+check('anonymous cannot read integrations', r.status === 401, r);
+r = await call('s', 'PUT', '/admin/integrations/products', { values: { provider: 'mock', apiKey: 'ci-example-key', cacheMinutes: '60' } });
+check('owner saves integration with secret redacted', r.status === 200 && r.json.configured.apiKey === true && !JSON.stringify(r.json).includes('ci-example-key'), r);
+r = await call('s', 'GET', '/admin/settings');
+check('general settings exclude integration secrets', r.status === 200 && !Object.keys(r.json).some(k => k.startsWith('private.')), r);
+r = await call('s', 'PUT', '/admin/integrations/products', { values: { apiKey: '' } });
+check('blank credential preserves stored key', r.status === 200 && r.json.configured.apiKey === true, r);
+r = await call('s', 'PUT', '/admin/integrations/products', { values: {}, clearSecrets: ['apiKey'] });
+check('explicit clear removes stored key', r.status === 200 && r.json.configured.apiKey === false, r);
+r = await call('s', 'POST', '/admin/integrations/products/test');
+check('mock provider not reported as live connection', r.status === 201 && r.json.ok === false, r);
+const appearance = { primary: '#112233', accent: '#D4A93A', secondary: '#0F6B4F', background: '#F6F2E8', defaultTheme: 'system', headerLogo: '/brand/logo-header.png', footerLogo: '/brand/logo-footer.png', showImageSearch: true, showShipping: true, showMobileNav: true };
+r = await call('c', 'PUT', '/admin/appearance', appearance);
+check('customer cannot update appearance', r.status === 403, r);
+r = await call('s', 'PUT', '/admin/appearance', { ...appearance, headerLogo: 'javascript:alert(1)' });
+check('unsafe appearance logo rejected', r.status === 400, r);
+r = await call('s', 'PUT', '/admin/appearance', appearance);
+check('owner updates appearance', r.status === 200 && r.json.primary === appearance.primary, r);
+r = await call('x', 'GET', '/appearance');
+check('appearance publicly readable without credentials', r.status === 200 && r.json.defaultTheme === 'system' && !JSON.stringify(r.json).includes('ci-example-key'), r);
+r = await call('s', 'GET', '/admin/audit');
+check('integration audit redacts credential values', r.status === 200 && !JSON.stringify(r.json).includes('ci-example-key'), r);
+
 r = await call('c', 'POST', '/auth/logout');
 r = await call('c', 'GET', '/auth/me');
 check('logout revokes session', r.status === 401, r);

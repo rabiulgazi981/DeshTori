@@ -42,6 +42,7 @@ jobs:
       DATABASE_URL: postgresql://deshtori:deshtori@localhost:5432/deshtori?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-secret
+      INTEGRATIONS_ENCRYPTION_KEY: ci-only-32-character-encryption-key-for-tests
       OTP_DEV_ECHO: 'true'
       GATEWAY_MOCK: 'true'
       NODE_ENV: test
@@ -58,6 +59,8 @@ jobs:
       - run: scripts/ci-run.sh pnpm --filter @deshtori/api exec prisma db push
       - run: scripts/ci-run.sh pnpm --filter @deshtori/api prisma:seed
       - run: scripts/ci-run.sh pnpm --filter @deshtori/api build
+      - name: Dashboard settings and credential protection tests
+        run: node --test tests/dashboard-*.test.cjs
       - name: Start API and run smoke test
         shell: bash
         run: |
