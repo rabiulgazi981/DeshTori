@@ -308,7 +308,7 @@ export class AdminController {
   async saveContent(@Req() r: AuthedRequest, @Param('key') key: string, @Body() body: { value: unknown }) {
     if (!(CONTENT_KEYS as readonly string[]).includes(key)) throw new NotFoundException();
     if (body?.value === undefined) throw new BadRequestException('VALUE_REQUIRED');
-    if (JSON.stringify(body.value).length > 200_000) throw new BadRequestException('TOO_LARGE');
+    if (JSON.stringify(body.value).length > 1_000_000) throw new BadRequestException('TOO_LARGE');
     const k = `content.${key}`;
     const value = body.value as Prisma.InputJsonValue;
     const before = await this.prisma.setting.findUnique({ where: { key: k } });

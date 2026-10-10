@@ -561,3 +561,23 @@ model GatewaySession {
   raw        Json?
   createdAt  DateTime @default(now())
 }
+
+// ───────────────────────── Media ─────────────────────────
+
+/// Uploaded images, stored in Postgres so they survive redeploys (Render's disk is wiped).
+/// Served publicly at /api/uploads/<id>.<ext>.
+model Media {
+  id           String   @id
+  name         String
+  mime         String   // image/jpeg | image/png | image/webp
+  bytes        Bytes
+  size         Int
+  width        Int?
+  height       Int?
+  /// LIBRARY = admin media library (banners, blog, categories…); UPLOAD = customer/staff working files (payment screenshots, QC photos)
+  scope        String   @default("UPLOAD")
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([scope, createdAt])
+}

@@ -4,7 +4,10 @@ import { IsIn, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProductsService } from './products.service';
 import { Market } from './provider';
-import { MAX_DATA_URL, saveImageDataUrl } from '../uploads/uploads.controller';
+import { MediaService } from '../uploads/media.service';
+
+/** base64 of a 4 MB file plus the data-URL prefix */
+const MAX_DATA_URL = 6 * 1024 * 1024;
 
 class SearchQuery {
   @IsString() @MaxLength(200) q: string;
@@ -43,7 +46,7 @@ const clientIp = (req: Request) => {
 
 @Controller('products')
 export class ProductsController {
-  constructor(private products: ProductsService) {}
+  constructor(private products: ProductsService, private media: MediaService) {}
 
   @Get('search')
   search(@Query() q: SearchQuery) {
@@ -60,8 +63,8 @@ export class ProductsController {
   async searchImage(@Req() req: Request, @Body() dto: ImageDto) {
     if (!dto.imageUrl && !dto.dataUrl) throw new BadRequestException('IMAGE_ONLY');
     await this.products.imageSearchAllowed(clientIp(req));
-    // validate type / size / magic bytes before saving; the provider fetches it from PUBLIC_API_URL/uploads
-    const imageUrl = dto.dataUrl ? saveImageDataUrl(dto.dataUrl) : dto.imageUrl!;
+    // type / size / magic bytes are checked on save; the provider fetches it from PUBLIC_API_URL/uploads/<id>
+    const imageUrl = dto.dataUrl ? (await this.media.save(dto.dataUrl, { name: 'image-search', scope: 'UPLOAD' })).url : dto.imageUrl!;
     return this.products.searchByImage(imageUrl, { page: dto.page });
   }
 

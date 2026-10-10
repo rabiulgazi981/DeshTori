@@ -12,10 +12,11 @@ import { SupportController } from '../support/support.controller';
 import { GatewayController } from '../gateway/gateway.controller';
 import { WishlistController } from '../wishlist/wishlist.controller';
 import { UploadsController } from '../uploads/uploads.controller';
+import { MediaController } from '../uploads/media.controller';
 
 /** Admin panel + the customer features built on top of orders. */
 @Module({
   imports: [OrdersModule, PaymentsModule, ProductsModule],
-  controllers: [ConfigController, AdminController, OpsController, ShipController, DecisionsController, InvoicesController, SupportController, GatewayController, WishlistController, UploadsController],
+  controllers: [ConfigController, AdminController, OpsController, ShipController, DecisionsController, InvoicesController, SupportController, GatewayController, WishlistController, UploadsController, MediaController],
 })
 export class ExtrasModule {}
