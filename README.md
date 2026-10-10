@@ -106,7 +106,7 @@ Product API test একটি search request করতে পারে (quota �
 Validation: `pnpm test:dashboard` (API build + dashboard credential/settings tests)।
 # Render demo deployment
 
-Deploy the `codex/dashboard-integrations-appearance` branch as a Node Web Service
+Deploy the `main` branch as a Node Web Service
 from the repository root. Build with:
 
 ```sh
