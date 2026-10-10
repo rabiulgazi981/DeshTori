@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root { color-scheme: light; --dt-navy: 14 42 107; --dt-gold: 212 169 58; --dt-emerald: 15 107 79; --dt-ivory: 246 242 232; }
 html[data-theme='dark'] { color-scheme: dark; }
 body { @apply bg-ivory text-navy font-sans antialiased; }
 html[data-theme='dark'] body { background: #0B1630; color: #E6ECF8; }
@@ -29,3 +29,8 @@ html[data-theme='dark'] body { background: #0B1630; color: #E6ECF8; }
 @media (prefers-reduced-motion: reduce) { .dt-track { animation: none; white-space: normal; display: block; } .dt-track > [aria-hidden] { display: none; } }
 
 :focus-visible { outline: 3px solid #D4A93A; outline-offset: 2px; }
+
+/* Dashboard-controlled primary and accent surfaces. */
+.btn-gold { background-image: linear-gradient(180deg, rgb(var(--dt-gold) / .7), rgb(var(--dt-gold))); }
+.btn-navy { background-image: linear-gradient(180deg, rgb(var(--dt-navy) / .8), rgb(var(--dt-navy))); }
+header[role], header.relative { background-image: linear-gradient(180deg, rgb(var(--dt-navy) / .9), rgb(var(--dt-navy))); }

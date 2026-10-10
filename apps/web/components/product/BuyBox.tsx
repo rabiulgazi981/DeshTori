@@ -18,6 +18,9 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
   const [freightOpen, setFreightOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // 1688 products come without a variant list: one option + the customer writes colour/model/size
+  const single = p.skus.length === 1;
+  const [note, setNote] = useState('');
 
   const totalQty = Object.values(qty).reduce((a, b) => a + b, 0);
   const tiers = [...p.priceTiers].sort((a, b) => a.minQty - b.minQty);
@@ -36,10 +39,11 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
 
   const addToCart = async (goCart: boolean) => {
     if (!totalQty) return setMsg('আগে পরিমাণ বাছাই করুন');
+    if (single && !note.trim() && p.market === 'M1688') return setMsg('রং / মডেল / সাইজ লিখে দিন — চায়না টিম সেভাবে কিনবে');
     setBusy(true);
     setMsg(null);
     try {
-      for (const s of p.skus) if (qty[s.skuId]) await api('/cart', { method: 'POST', json: { productId: p.id, skuId: s.skuId, qty: qty[s.skuId], shipMode: ship } });
+      for (const s of p.skus) if (qty[s.skuId]) await api('/cart', { method: 'POST', json: { productId: p.id, skuId: s.skuId, qty: qty[s.skuId], shipMode: ship, ...(single && note.trim() ? { note: note.trim() } : {}) } });
       if (goCart) router.push('/cart');
       else setMsg('✓ কার্টে রাখা হয়েছে');
     } catch (e) {
@@ -83,6 +87,41 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
       </div>
 
       {/* variants */}
+      {single ? (
+        <div className="card flex flex-col gap-3 p-5">
+          {p.skus.map((s) => (
+            <div key={s.skuId} className="flex flex-wrap items-center justify-between gap-3">
+              <span className="flex flex-col"><b>পরিমাণ</b><span className="text-xs text-muted">স্টক {toBanglaDigits(s.stock)} · প্রতি পিস {formatBdt(unit(s.pricePaisa))}</span></span>
+              {s.stock <= 0 ? (
+                <span className="text-sm text-danger">স্টক শেষ</span>
+              ) : (
+                <span className="flex items-center rounded-xl border border-emerald">
+                  <button onClick={() => change(s.skuId, -1)} aria-label="কমান" className="h-11 w-11 text-xl text-emerald">−</button>
+                  <input
+                    aria-label="পরিমাণ"
+                    inputMode="numeric"
+                    value={qty[s.skuId] ?? 0}
+                    onChange={(e) => setQty((m) => ({ ...m, [s.skuId]: Math.min(100000, Math.max(0, parseInt(e.target.value.replace(/\D/g, '') || '0', 10))) }))}
+                    className="w-16 bg-transparent text-center font-bold outline-none"
+                  />
+                  <button onClick={() => change(s.skuId, 1)} aria-label="বাড়ান" className="h-11 w-11 text-xl text-emerald">+</button>
+                </span>
+              )}
+            </div>
+          ))}
+          <label className="label">
+            রং / মডেল / সাইজ
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, 200))}
+              rows={2}
+              placeholder="যেমন: কালো ৫টা, নীল ৫টা — iPhone 17 Pro"
+              className="input min-h-[64px] resize-y font-normal"
+            />
+          </label>
+          <p className="text-xs text-muted">ছবিতে যে রং/মডেল দেখছেন তা লিখুন; একাধিক হলে সংখ্যাসহ লিখুন। চায়না টিম সেভাবেই কিনবে, না পেলে আপনাকে জানাবে।</p>
+        </div>
+      ) : (
       <div className="card flex flex-col gap-3 p-5">
         <div className="flex flex-wrap items-center gap-2"><span className="text-muted">{firstKey}:</span><b className="rounded-lg bg-emerald-light px-2.5 text-emerald-dark">{group}</b></div>
         <div className="flex flex-wrap gap-2">
@@ -111,6 +150,7 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
           ))}
         </div>
       </div>
+      )}
 
       {/* shipping + summary */}
       <div className="card flex flex-col gap-4 p-5">

@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+import { getAppearance } from '@/lib/appearance';
 import type { Metadata } from 'next';
 import { Hind_Siliguri, Cinzel } from 'next/font/google';
 import './globals.css';
@@ -43,19 +45,20 @@ async function getSettings(): Promise<PublicSettings | null> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSettings();
+  const [settings, appearance] = await Promise.all([getSettings(), getAppearance()]);
+  const colors = Object.fromEntries(Object.entries({ navy: appearance.primary, gold: appearance.accent, emerald: appearance.secondary, ivory: appearance.background }).map(([name, hex]) => [`--dt-${name}`, /^#[a-fA-F0-9]{6}$/.test(hex) ? `${parseInt(hex.slice(1, 3), 16)} ${parseInt(hex.slice(3, 5), 16)} ${parseInt(hex.slice(5, 7), 16)}` : undefined])) as CSSProperties;
   return (
-    <html lang="bn" className={`${hind.variable} ${cinzel.variable}`} suppressHydrationWarning>
+    <html lang="bn" className={`${hind.variable} ${cinzel.variable}`} suppressHydrationWarning style={colors}>
       <head>
         {/* apply saved theme before paint (no flash) */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('dt-theme')||'light';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light'}catch(e){}`,
+            __html: `try{var t=localStorage.getItem('dt-theme')||${JSON.stringify(appearance.defaultTheme).replace(/</g, '\\u003c')};var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light'}catch(e){}`,
           }}
         />
       </head>
       <body className="min-h-screen flex flex-col">
-        <Chrome top={<TopBar notice={settings?.notice} />} header={<Header />} footer={<Footer />}>
+        <Chrome top={<TopBar notice={settings?.notice} />} header={<Header logo={appearance.headerLogo} showImageSearch={appearance.showImageSearch} showShipping={appearance.showShipping} />} footer={<Footer logo={appearance.footerLogo} />} showMobileNav={appearance.showMobileNav} showShipping={appearance.showShipping}>
           {children}
         </Chrome>
       </body>

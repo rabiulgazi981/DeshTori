@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { SmsService } from './sms.service';
+import { SmsController } from './sms.controller';
 
 @Global()
-@Module({ providers: [SmsService], exports: [SmsService] })
+@Module({ providers: [SmsService], controllers: [SmsController], exports: [SmsService] })
 export class NotifyModule {}

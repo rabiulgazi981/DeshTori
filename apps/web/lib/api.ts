@@ -1,4 +1,6 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+export const API_URL = typeof window === 'undefined'
+  ? process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+  : process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, public body: unknown) {
@@ -33,6 +35,7 @@ export const ERR_BN: Record<string, string> = {
   OTP_EXPIRED: 'কোডের মেয়াদ শেষ, আবার পাঠান',
   OTP_WAIT_60S: '১ মিনিট পর আবার চেষ্টা করুন',
   OTP_DAILY_LIMIT: 'আজকের OTP সীমা শেষ। হটলাইনে যোগাযোগ করুন',
+  SMS_FAILED: 'এই মুহূর্তে SMS পাঠানো যাচ্ছে না। একটু পরে আবার চেষ্টা করুন, অথবা হটলাইনে কল করুন: 01938-27 38 78',
   WRONG_CREDENTIALS: 'নম্বর বা পাসওয়ার্ড ভুল',
   ACCOUNT_LOCKED: 'অনেকবার ভুল হয়েছে, ১৫ মিনিট পর চেষ্টা করুন',
   WEAK_PASSWORD: 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষর, অক্ষর ও সংখ্যা মিলিয়ে দিন',

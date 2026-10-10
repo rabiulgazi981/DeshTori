@@ -46,8 +46,23 @@ pnpm dev                                     # web: http://localhost:3000  api: 
 - ডেভেলপমেন্টে SMS যায় না; `GATEWAY_MOCK=true` থাকলে “টেস্ট পেমেন্ট” বাটনে পেমেন্ট পরীক্ষা করা যায়।
 - প্রোডাক্ট ডেটা আসে নমুনা (mock) প্রোভাইডার থেকে, যতদিন আসল API ঠিক না হয়।
 
-## আসল 1688/Taobao API যুক্ত করা
-`apps/api/src/products/provider.ts`-এর `ProductProvider` ইন্টারফেস মেনে একটা ক্লাস লিখুন (যেমন `hiobuy.provider.ts`), তারপর `products.service.ts`-এর `createProvider()`-এ যোগ করে `.env`-এ `PRODUCT_PROVIDER=hiobuy` দিন। বাকি সাইটে কিছু বদলাতে হবে না।
+## আসল পণ্যের ডেটা (1688 / Taobao)
+
+| প্রোভাইডার (RapidAPI) | `PRODUCT_PROVIDER` | অবস্থা (২০২৬-১০-০৫ লাইভ টেস্ট) |
+|---|---|---|
+| **Alibaba 1688 API** (dataapiman) | `alibaba-1688` | ✅ 1688 সার্চ + বিস্তারিত: ছবি, দাম, দামের টিয়ার, স্টক, ওজন, দোকান। ❌ রং/মডেলের তালিকা দেয় না |
+| Taobao DataHub (ecommdatahub) | `taobao-datahub` | ✅ সার্চ, ❌ বিস্তারিত (সব পণ্যে "no results") |
+
+চালু করতে `apps/api/.env`-এ:
+```
+PRODUCT_PROVIDER=alibaba-1688
+RAPIDAPI_KEY=<আপনার নতুন key>      # শুধু সার্ভারে, কখনো GitHub-এ না
+PRODUCT_CACHE_MINUTES=1440          # ফ্রি প্ল্যানে মাসে ৫০টা রিকোয়েস্ট — ক্যাশ লম্বা রাখুন
+```
+- 1688-এর পণ্যে ভেরিয়েন্টের তালিকা আসে না, তাই প্রোডাক্ট পেজে একটা অপশন + **"রং / মডেল / সাইজ"** লেখার ঘর। লেখাটা কার্ট, অর্ডার, ইনভয়েস আর চায়না টিমের ক্রয় তালিকায় দেখায়।
+- ভেরিয়েন্টভেদে দাম আলাদা হলে (¥0.60–1.50) **সবচেয়ে বেশি দাম** ধরা হয়, যাতে লোকসান না হয়।
+- এই API-তে পেজিং/সাজানো নেই: প্রথম পাতায় ৬০টা পণ্য।
+- বিস্তারিতের গঠন না মিললে API লগে কারণ লেখা থাকে। নতুন প্রোভাইডার: `apps/api/src/products/provider.ts`-এর `ProductProvider` মেনে ক্লাস + `products.service.ts`-এর `createProvider()`।
 
 ## যা হয়েছে (v0.2)
 - [x] দাম, টিয়ার, অ্যাডভান্স, কুপন, ফ্রেইট, বিল – shared প্যাকেজ + টেস্ট
@@ -65,7 +80,9 @@ pnpm dev                                     # web: http://localhost:3000  api: 
 - [x] CI: টাইপচেক, বিল্ড, ১০০+ ধাপের end-to-end টেস্ট, ৩৯০px ও ডেস্কটপ স্ক্রিনশট
 
 ## বাকি
-- [ ] আসল 1688/Taobao প্রোডাক্ট API (প্রোভাইডার বাছাই হলে adapter)
+- [x] 1688 আসল ডেটা (RapidAPI Alibaba 1688 API) — সার্চ ও বিস্তারিত, লাইভ রেসপন্সে টেস্ট করা
+- [ ] Taobao-র কাজের বিস্তারিত API (DataHub-এর বিস্তারিত ভাঙা); ছবি দিয়ে খোঁজা
+- [ ] পেইড প্ল্যান (ফ্রি: মাসে ৫০ রিকোয়েস্ট)
 - [ ] Nagad সরাসরি গেটওয়ে (এখন SSLCommerz দিয়ে Nagad চলে)
 - [ ] WhatsApp Business API ও ইমেইল নোটিফিকেশন (এখন SMS + WhatsApp লিংক)
 - [ ] সার্ভারে লাইভ করা (VPS, ডোমেইন, SSL)
@@ -73,3 +90,44 @@ pnpm dev                                     # web: http://localhost:3000  api: 
 
 ---
 Design & Development by [BONGSHAL TECH](https://bongshaltech.com/) · © 2026 DeshTori
+
+## Dashboard থেকে API ও website control
+
+Owner-এর নতুন দুটি menu:
+- `/admin/integrations`: Product provider (mock / RapidAPI Alibaba 1688 / experimental Taobao DataHub), cache time, SMS provider ও Sender ID, bKash / SSLCommerz credentials ও Sandbox/Live environment।
+- `/admin/appearance`: primary/accent/secondary/background colors, header/footer logo upload, default Light/Dark/System theme, image-search button, shipping navigation ও mobile bottom navigation।
+
+Server-এ `INTEGRATIONS_ENCRYPTION_KEY` হিসেবে ৩২+ random character সেট করুন (অথবা বিদ্যমান ৩২+ character JWT_SECRET fallback)। Key স্থায়ী রাখুন; database backup-এর সঙ্গে encryption key নিরাপদভাবে রাখুন। Credentials AES-256-GCM encrypted হয়; dashboard শুধু configured status দেখায় এবং audit log-এ credentials যায় না। খালি password input পুরোনো key রাখে, explicit clear server environment fallback-ও নিষ্ক্রিয় করে। Dashboard-এ override না থাকলে পুরোনো environment configuration কাজ করে।
+
+Product API test একটি search request করতে পারে (quota খরচ), Alpha SMS test শুধু balance দেখে। Payment gateway configuration live transaction validation নয়। Pending gateway session শেষ হওয়ার আগে credentials/environment পরিবর্তন করবেন না। Appearance পরের page load-এ কার্যকর; visitor-এর নিজস্ব theme choice default-এর আগে ব্যবহৃত হয়। Navigation switch feature access বন্ধ করে না।
+
+1688 adapters PR #4 থেকে পুনর্ব্যবহার করা হয়েছে। বর্তমান provider-এ full variant list, image search, pagination/sorting নেই; Taobao details experimental। নতুন arbitrary provider URL অথবা Hiobuy adapter এই dashboard-এর অংশ নয়। Generic HTTP SMS URL এখনো server environment থেকে আসে।
+
+Validation: `pnpm test:dashboard` (API build + dashboard credential/settings tests)।
+# Render demo deployment
+
+Deploy the `main` branch as a Node Web Service
+from the repository root. Build with:
+
+```sh
+corepack enable && pnpm install --frozen-lockfile && pnpm --filter @deshtori/shared build && pnpm --filter @deshtori/api build && pnpm --filter @deshtori/web build
+```
+
+Start with `node scripts/render-start.cjs`. Set `NODE_ENV=production`,
+`NEXT_PUBLIC_API_URL=/api`, `INTERNAL_API_URL=http://127.0.0.1:4000/api`,
+`DATABASE_URL` to the Neon pooled connection, and distinct random secrets of at
+least 32 characters for `JWT_SECRET` and `INTEGRATIONS_ENCRYPTION_KEY`.
+Set `SEED_OWNER_PHONE` and `SEED_OWNER_PASSWORD` to initialize the owner and
+default freight settings on an empty database. Remove the seed password after
+the first successful deployment. Never commit secrets.
+
+The startup script uses a direct connection for versioned Prisma migrations,
+refuses to migrate an existing database without migration history, and only
+seeds when there are no users. Render's external URL supplies the public API
+URL and allowed web origin. Next.js proxies `/api` to Nest on port 4000, so
+session cookies stay on the website's origin.
+
+Free hosting is for demos: uploads on Render's local filesystem disappear on
+restart or redeployment. Add durable object storage before taking customer
+uploads. Real SMS, product providers and payment gateways require separately
+configured credentials; production console SMS deliberately refuses OTP sends.

@@ -8,11 +8,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel --filter ./apps/** dev",
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
     "dev:api": "pnpm --filter @deshtori/api dev",
     "dev:web": "pnpm --filter @deshtori/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
+    "test:dashboard": "pnpm --filter @deshtori/api build && node --test tests/dashboard-*.test.cjs",
     "typecheck": "pnpm -r typecheck",
     "db:up": "docker compose up -d postgres redis",
     "db:migrate": "pnpm --filter @deshtori/api prisma:migrate",

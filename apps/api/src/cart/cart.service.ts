@@ -16,17 +16,20 @@ interface StoredSku {
 export class CartService {
   constructor(private prisma: PrismaService, private settings: SettingsService) {}
 
-  async add(userId: string, productId: string, skuId: string, qty: number, shipMode: ShipMode) {
+  async add(userId: string, productId: string, skuId: string, qty: number, shipMode: ShipMode, note?: string) {
     const p = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!p) throw new NotFoundException('PRODUCT_NOT_FOUND');
     const sku = (p.skus as unknown as StoredSku[]).find((k) => k.skuId === skuId);
     if (!sku) throw new BadRequestException('SKU_NOT_FOUND');
     if (sku.stock <= 0) throw new BadRequestException('OUT_OF_STOCK');
-    const skuLabel = Object.values(sku.props).join(' · ');
+    // a customer note (colour/model for products without a variant list) travels with the label,
+    // so it shows on the cart, order, invoice and the China team's purchase list
+    const clean = note?.replace(/\s+/g, ' ').trim().slice(0, 200);
+    const skuLabel = Object.values(sku.props).join(' · ') + (clean ? ` — ${clean}` : '');
     return this.prisma.cartItem.upsert({
       where: { userId_productId_skuId: { userId, productId, skuId } },
       create: { userId, productId, skuId, skuLabel, qty, shipMode },
-      update: { qty: { increment: qty }, shipMode },
+      update: clean ? { qty: { increment: qty }, shipMode, skuLabel } : { qty: { increment: qty }, shipMode },
     });
   }
 

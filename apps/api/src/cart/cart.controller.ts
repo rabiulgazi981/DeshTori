@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { IsIn, IsInt, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsString, Max, Min, IsOptional, MaxLength } from 'class-validator';
 import { ShipMode } from '@prisma/client';
 import { CartService } from './cart.service';
 import { AuthedRequest, JwtAuthGuard } from '../auth/guards';
@@ -9,6 +9,7 @@ class AddDto {
   @IsString() skuId: string;
   @IsInt() @Min(1) @Max(100000) qty: number;
   @IsIn(['AIR', 'SEA']) shipMode: ShipMode;
+  @IsOptional() @IsString() @MaxLength(200) note?: string;
 }
 class QtyDto {
   @IsInt() @Min(0) @Max(100000) qty: number;
@@ -23,7 +24,7 @@ export class CartController {
     return this.cart.view(r.user.id);
   }
   @Post() add(@Req() r: AuthedRequest, @Body() d: AddDto) {
-    return this.cart.add(r.user.id, d.productId, d.skuId, d.qty, d.shipMode);
+    return this.cart.add(r.user.id, d.productId, d.skuId, d.qty, d.shipMode, d.note);
   }
   @Patch(':id') qty(@Req() r: AuthedRequest, @Param('id') id: string, @Body() d: QtyDto) {
     return this.cart.setQty(r.user.id, id, d.qty);

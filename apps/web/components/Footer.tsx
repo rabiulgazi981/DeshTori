@@ -1,12 +1,12 @@
 import Link from 'next/link';
 
-export function Footer() {
+export function Footer({ logo = '/brand/logo-footer.png' }: { logo?: string }) {
   return (
     <footer className="mt-12 bg-navy text-[#C8D3EA]">
       <div className="flex flex-wrap justify-between gap-x-14 gap-y-7 px-4 pb-5 pt-9 md:px-7">
         <div className="max-w-[360px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-footer.png" alt="DeshTori – চীনের বাজার থেকে আপনার দুয়ারে।" className="block h-auto w-full max-w-[330px]" />
+          <img src={logo} alt="DeshTori – চীনের বাজার থেকে আপনার দুয়ারে।" className="block h-auto w-full max-w-[330px]" />
         </div>
         <div className="flex flex-col gap-2 text-[15px]">
           <b className="text-white">সাহায্য</b>

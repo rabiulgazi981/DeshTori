@@ -35,7 +35,7 @@ export class SettingsService {
   async get(): Promise<SiteSettings> {
     const hit = await this.cache.get<SiteSettings>(CACHE_KEY);
     if (hit) return hit;
-    const rows = await this.prisma.setting.findMany();
+    const rows = await this.prisma.setting.findMany({ where: { key: { in: Object.keys(DEFAULT_SETTINGS) } } });
     const merged: SiteSettings = { ...DEFAULT_SETTINGS };
     for (const r of rows) (merged as unknown as Record<string, unknown>)[r.key] = r.value;
     await this.cache.set(CACHE_KEY, merged, 300);

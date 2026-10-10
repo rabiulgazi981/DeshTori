@@ -12,3 +12,4 @@ coverage/
 apps/api/uploads/
 /apps/api/uploads/
 *.tsbuildinfo
+api-test-output/

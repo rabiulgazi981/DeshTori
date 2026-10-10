@@ -60,6 +60,7 @@ export default function Settings() {
         )}
       </div>
       <Freight />
+      <SmsGateway />
       <Blocked />
     </>
   );
@@ -108,6 +109,51 @@ function Blocked() {
           <span key={x.id} className="chip gap-1 bg-ivory-ph py-1 text-sm">{x.keyword}<button aria-label={`${x.keyword} মুছুন`} className="ml-1 text-danger" onClick={() => act.run(async () => { await api(`/admin/blocked-keywords/${x.id}`, { method: 'DELETE' }); await reload(); }, 'মুছে ফেলা হয়েছে')}>✕</button></span>
         ))}
       </div>
+    </Panel>
+  );
+}
+
+interface SmsStatus { provider: string; live: boolean; balance?: number; error?: string }
+const SMS_NAMES: Record<string, string> = { alpha: 'Alpha SMS (sms.net.bd)', http: 'HTTP গেটওয়ে', console: 'চালু নেই (শুধু টেস্ট মোড)' };
+
+/** OTP/notification SMS gateway — Owner only. The key itself lives in the server .env and is never shown. */
+function SmsGateway() {
+  const { data, err, reload } = useApi<SmsStatus>('/admin/sms/status');
+  const act = useAction();
+  const [phone, setPhone] = useState('');
+  if (err && !data) return null; // not the owner
+  return (
+    <Panel title="SMS গেটওয়ে (OTP ও নোটিফিকেশন)" className="mt-4">
+      <Msg m={act.msg} />
+      {!data ? (
+        <p className="text-sm text-muted">লোড হচ্ছে…</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <span>গেটওয়ে: <b>{SMS_NAMES[data.provider] ?? data.provider}</b></span>
+          {data.balance !== undefined && <span>ব্যালেন্স: <b>৳{data.balance.toFixed(2)}</b></span>}
+          {data.error && <span className="font-semibold text-danger">{data.error}</span>}
+          <button className="btn-outline h-9 min-h-0 px-3 text-sm" onClick={() => void reload()}>রিফ্রেশ</button>
+        </div>
+      )}
+      {data && !data.live && (
+        <p className="rounded-lg bg-gold-chip px-3 py-2 text-sm text-gold-ink">
+          আসল SMS যাচ্ছে না। সার্ভারের <code>.env</code>-এ <code>SMS_PROVIDER=alpha</code> আর <code>SMS_API_KEY</code> বসিয়ে API রিস্টার্ট করুন।
+        </p>
+      )}
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void act.run(async () => {
+            await api('/admin/sms/test', { method: 'POST', json: { phone } });
+            await reload();
+          }, 'টেস্ট SMS পাঠানো হয়েছে — ফোনে দেখুন');
+        }}
+      >
+        <label className="sr-only" htmlFor="sms-test">টেস্ট নম্বর</label>
+        <input id="sms-test" className="input max-w-xs" inputMode="tel" placeholder="01XXXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <button className="btn-gold" disabled={act.busy || phone.replace(/\D/g, '').length < 11}>টেস্ট SMS পাঠান</button>
+      </form>
     </Panel>
   );
 }

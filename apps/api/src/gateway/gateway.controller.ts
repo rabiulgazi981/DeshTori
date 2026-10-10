@@ -1,3 +1,4 @@
+import { IntegrationsService } from '../integrations/integrations.service';
 import { BadRequestException, Body, Controller, Get, Logger, NotFoundException, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { IsIn, IsInt, IsString, Min } from 'class-validator';
 import { Response } from 'express';
@@ -28,21 +29,21 @@ const taka = (paisa: number) => (paisa / 100).toFixed(2);
 
 // ───────────── bKash ─────────────
 class Bkash {
-  private base = process.env.BKASH_BASE_URL ?? 'https://tokenized.sandbox.bka.sh/v1.2.0-beta';
-  static configured = () => !!(process.env.BKASH_APP_KEY && process.env.BKASH_APP_SECRET && process.env.BKASH_USERNAME && process.env.BKASH_PASSWORD);
+  constructor(private config: Record<string, string>) {}
+  private get base() { return this.config.environment === 'live' ? 'https://tokenized.pay.bka.sh/v1.2.0-beta' : 'https://tokenized.sandbox.bka.sh/v1.2.0-beta'; }
 
   private async token() {
     const r = await fetch(`${this.base}/tokenized/checkout/token/grant`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', username: process.env.BKASH_USERNAME!, password: process.env.BKASH_PASSWORD! },
-      body: JSON.stringify({ app_key: process.env.BKASH_APP_KEY, app_secret: process.env.BKASH_APP_SECRET }),
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', username: this.config.username, password: this.config.password },
+      body: JSON.stringify({ app_key: this.config.appKey, app_secret: this.config.appSecret }),
     });
     const j = (await r.json()) as { id_token?: string; statusMessage?: string };
     if (!j.id_token) throw new BadRequestException('BKASH_TOKEN_FAILED');
     return j.id_token;
   }
   private headers(token: string) {
-    return { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: token, 'X-APP-Key': process.env.BKASH_APP_KEY! };
+    return { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: token, 'X-APP-Key': this.config.appKey };
   }
   async create(sessionId: string, amount: number, invoice: string, payer: string) {
     const token = await this.token();
@@ -64,13 +65,13 @@ class Bkash {
 
 // ───────────── SSLCommerz ─────────────
 class Sslcz {
-  private base = process.env.SSLCZ_BASE_URL ?? 'https://sandbox.sslcommerz.com';
-  static configured = () => !!(process.env.SSLCZ_STORE_ID && process.env.SSLCZ_STORE_PASSWORD);
+  constructor(private config: Record<string, string>) {}
+  private get base() { return this.config.environment === 'live' ? 'https://securepay.sslcommerz.com' : 'https://sandbox.sslcommerz.com'; }
 
   async create(sessionId: string, amount: number, invoice: string, cus: { name: string; phone: string }) {
     const f = new URLSearchParams({
-      store_id: process.env.SSLCZ_STORE_ID!,
-      store_passwd: process.env.SSLCZ_STORE_PASSWORD!,
+      store_id: this.config.storeId,
+      store_passwd: this.config.storePassword,
       total_amount: taka(amount),
       currency: 'BDT',
       tran_id: sessionId,
@@ -95,7 +96,7 @@ class Sslcz {
     return { redirectUrl: j.GatewayPageURL, externalId: j.sessionkey };
   }
   async validate(valId: string) {
-    const q = new URLSearchParams({ val_id: valId, store_id: process.env.SSLCZ_STORE_ID!, store_passwd: process.env.SSLCZ_STORE_PASSWORD!, format: 'json' });
+    const q = new URLSearchParams({ val_id: valId, store_id: this.config.storeId, store_passwd: this.config.storePassword, format: 'json' });
     const r = await fetch(`${this.base}/validator/api/validationserverAPI.php?${q}`);
     return (await r.json()) as { status?: string; tran_id?: string; amount?: string; bank_tran_id?: string };
   }
@@ -104,18 +105,17 @@ class Sslcz {
 @Controller('gateway')
 export class GatewayController {
   private log = new Logger('Gateway');
-  private bkash = new Bkash();
-  private sslcz = new Sslcz();
 
-  constructor(private prisma: PrismaService, private payments: PaymentsService, private orders: OrdersService) {}
+  constructor(private prisma: PrismaService, private payments: PaymentsService, private orders: OrdersService, private integrations: IntegrationsService) {}
 
   /** Which online methods are switched on (no secrets – just yes/no). */
   @Get('methods') async methods() {
+    const [bkash, sslcz] = await Promise.all([this.integrations.resolve('bkash'), this.integrations.resolve('sslcommerz')]);
     const row = await this.prisma.setting.findUnique({ where: { key: 'content.gateways' } });
     const show = (row?.value ?? {}) as { bkashOn?: boolean; sslczOn?: boolean; manualOn?: boolean };
     return {
-      BKASH_GATEWAY: Bkash.configured() && show.bkashOn !== false,
-      SSLCOMMERZ: Sslcz.configured() && show.sslczOn !== false,
+      BKASH_GATEWAY: !!(bkash.appKey && bkash.appSecret && bkash.username && bkash.password) && show.bkashOn !== false,
+      SSLCOMMERZ: !!(sslcz.storeId && sslcz.storePassword) && show.sslczOn !== false,
       MANUAL: show.manualOn !== false,
       MOCK: process.env.GATEWAY_MOCK === 'true' && process.env.NODE_ENV !== 'production',
     };
@@ -131,8 +131,8 @@ export class GatewayController {
     if (!on[d.method]) throw new BadRequestException('GATEWAY_NOT_CONFIGURED');
     const s = await this.prisma.gatewaySession.create({ data: { userId: r.user.id, orderId: o.id, method: d.method, amount: d.amount } });
     let out: { redirectUrl: string; externalId?: string };
-    if (d.method === 'BKASH_GATEWAY') out = await this.bkash.create(s.id, d.amount, o.code, o.user.phone);
-    else if (d.method === 'SSLCOMMERZ') out = await this.sslcz.create(s.id, d.amount, o.code, { name: o.user.name ?? 'Customer', phone: o.user.phone });
+    if (d.method === 'BKASH_GATEWAY') out = await new Bkash(await this.integrations.resolve('bkash')).create(s.id, d.amount, o.code, o.user.phone);
+    else if (d.method === 'SSLCOMMERZ') out = await new Sslcz(await this.integrations.resolve('sslcommerz')).create(s.id, d.amount, o.code, { name: o.user.name ?? 'Customer', phone: o.user.phone });
     else out = { redirectUrl: `${apiBase()}/gateway/mock/pay?s=${s.id}` };
     await this.prisma.gatewaySession.update({ where: { id: s.id }, data: { externalId: out.externalId } });
     return { redirectUrl: out.redirectUrl };
@@ -155,7 +155,7 @@ export class GatewayController {
     const s = await this.prisma.gatewaySession.findUnique({ where: { id: sid } });
     if (!s || s.externalId !== paymentID) return res.redirect(`${webBase()}/pay/result?ok=0`);
     if (status !== 'success') return this.finish(sid, false, undefined, { status }, res);
-    const ex = await this.bkash.execute(paymentID).catch((e) => (this.log.error(e), {} as Record<string, string>));
+    const ex = await new Bkash(await this.integrations.resolve('bkash')).execute(paymentID).catch((e) => (this.log.error(e), {} as Record<string, string>));
     const ok = ex.transactionStatus === 'Completed' && Math.round(Number(ex.amount) * 100) === s.amount;
     return this.finish(sid, ok, ex.trxID, ex, res);
   }
@@ -165,7 +165,7 @@ export class GatewayController {
     if (!b?.tran_id) return res.redirect(`${webBase()}/pay/result?ok=0`);
     if (!b.val_id || b.status !== 'VALID') return this.finish(b.tran_id, false, undefined, b, res);
     const s = await this.prisma.gatewaySession.findUnique({ where: { id: b.tran_id } });
-    const v = await this.sslcz.validate(b.val_id).catch(() => ({}) as Record<string, string>);
+    const v = await new Sslcz(await this.integrations.resolve('sslcommerz')).validate(b.val_id).catch(() => ({}) as Record<string, string>);
     const ok = !!s && (v.status === 'VALID' || v.status === 'VALIDATED') && v.tran_id === s.id && Math.round(Number(v.amount) * 100) === s.amount;
     return this.finish(b.tran_id, ok, v.bank_tran_id, v, res);
   }
