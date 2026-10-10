@@ -57,4 +57,10 @@ async function main() {
   process.on('SIGTERM', () => stop(0));
   process.on('SIGINT', () => stop(0));
 }
-main().catch(() => { console.error('DeshTori setup failed. Check database reachability, migration history and required environment variables.'); process.exit(1); });
+// Show the cause (with any connection-string password masked) so a failed deploy says what to fix.
+const redact = text => String(text).replace(/(postgres(?:ql)?:\/\/[^:\s/]+:)[^@\s]+@/gi, '$1***@');
+main().catch(e => {
+  console.error('DeshTori setup failed. Check database reachability, migration history and required environment variables.');
+  console.error(`Reason: ${redact(e && e.message ? e.message : e)}`);
+  process.exit(1);
+});
