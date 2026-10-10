@@ -21,10 +21,11 @@ export default function Support() {
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-4 px-3 py-5 md:px-6">
       <Link href="/account" className="text-sm underline">← অ্যাকাউন্ট</Link>
-      <h1 className="text-2xl font-bold">সাপোর্ট</h1>
+      <h1 className="text-[26px] font-bold md:text-[32px]">সাপোর্ট</h1>
+      <p className="max-w-[68ch] text-[17px] leading-[1.8] text-muted md:text-[18px]">অর্ডার, পেমেন্ট বা শিপমেন্ট নিয়ে যেকোনো প্রশ্নে হটলাইন বা WhatsApp-এ কথা বলুন, অথবা নিচে টিকেট খুলুন — আমাদের টিম দ্রুত উত্তর দেবে।</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <a href="tel:+8801938273878" className="card flex items-center gap-3 p-4"><span className="text-2xl">📞</span><span><b>হটলাইন</b><br />01938-27 38 78</span></a>
-        <a href="https://wa.me/8801938273878" target="_blank" rel="noreferrer" className="card flex items-center gap-3 p-4"><span className="text-2xl">💬</span><span><b>WhatsApp</b><br />চ্যাট করুন</span></a>
+        <a href="tel:+8801938273878" className="card flex items-center gap-3 p-4"><span className="text-2xl">📞</span><span className="text-[16px]"><b className="text-lg">হটলাইন</b><br />01938-27 38 78</span></a>
+        <a href="https://wa.me/8801938273878" target="_blank" rel="noreferrer" className="card flex items-center gap-3 p-4"><span className="text-2xl">💬</span><span className="text-[16px]"><b className="text-lg">WhatsApp</b><br />চ্যাট করুন</span></a>
       </div>
       <section className="card flex flex-col gap-2 p-4">
         <h2 className="text-lg font-bold">নতুন টিকেট</h2>
