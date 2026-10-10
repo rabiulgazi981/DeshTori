@@ -66,7 +66,7 @@ export default async function Home() {
           <img src={b.image} alt={b.title ?? ''} loading="lazy" className="block aspect-[5/1] min-h-[90px] w-full object-cover" />
         );
         return (
-          <section key={i} className={`group relative overflow-hidden shadow-card ${b.width === 'full' ? '-mx-3 md:-mx-6' : 'rounded-3xl'}`} aria-label={b.title || 'অফার'}>
+          <section key={i} className={`group relative overflow-hidden shadow-card ${b.width === 'contained' ? 'rounded-3xl' : '-mx-3 md:-mx-6'}`} aria-label={b.title || 'অফার'}>
             {b.link ? <Link href={b.link} className="block transition group-hover:brightness-105">{img}</Link> : img}
             {(b.title || (b.showButton && b.link)) && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-3 bg-gradient-to-r from-black/40 to-transparent p-4 md:p-8">
