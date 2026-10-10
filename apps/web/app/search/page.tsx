@@ -11,36 +11,44 @@ const SORTS = [
   ['price_desc', 'দাম: বেশি → কম'],
 ] as const;
 
-export default async function SearchPage({ searchParams }: { searchParams: { q?: string; page?: string; sort?: string; market?: string } }) {
+export default async function SearchPage({ searchParams }: { searchParams: { q?: string; page?: string; sort?: string } }) {
   const q = (searchParams.q ?? '').trim();
   const page = Math.max(1, Number(searchParams.page ?? 1));
-  const sort = searchParams.sort ?? 'relevance';
-  const market = searchParams.market ?? 'ALL';
+  const sort = SORTS.some(([k]) => k === searchParams.sort) ? searchParams.sort! : 'relevance';
   let data: { items: SearchItem[]; total: number; blocked?: boolean } = { items: [], total: 0 };
   let failed = false;
   if (q.length >= 2) {
     try {
-      const r = await fetch(`${API_URL}/products/search?${new URLSearchParams({ q, page: String(page), sort, market })}`, { cache: 'no-store' });
+      const r = await fetch(`${API_URL}/products/search?${new URLSearchParams({ q, page: String(page), sort, market: 'ALL' })}`, { cache: 'no-store' });
       if (r.ok) data = await r.json();
       else failed = true;
     } catch {
       failed = true;
     }
   }
-  const qs = (extra: Record<string, string>) => `/search?${new URLSearchParams({ q, sort, market, ...extra })}`;
+  const qs = (extra: Record<string, string>) => `/search?${new URLSearchParams({ q, sort, ...extra })}`;
 
   return (
     <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-3 py-5 md:px-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">“{q}” <span className="text-base font-medium text-muted">{data.total ? `— প্রায় ${toBanglaDigits(data.total)}টি পণ্য` : ''}</span></h1>
-        <div className="flex flex-wrap gap-2">
-          {(['ALL', 'M1688', 'TAOBAO'] as const).map((m) => (
-            <Link key={m} href={qs({ market: m, page: '1' })} className={`chip min-h-[36px] border ${market === m ? 'border-navy bg-navy text-white' : 'border-ivory-line bg-white'}`}>{m === 'ALL' ? 'সব' : m === 'M1688' ? '1688' : 'Taobao'}</Link>
-          ))}
+        <nav aria-label="সাজানো" className="flex flex-wrap gap-2">
           {SORTS.map(([k, label]) => (
-            <Link key={k} href={qs({ sort: k, page: '1' })} className={`chip min-h-[36px] border ${sort === k ? 'border-navy bg-navy text-white' : 'border-ivory-line bg-white'}`}>{label}</Link>
+            <Link
+              key={k}
+              href={qs({ sort: k, page: '1' })}
+              aria-current={sort === k ? 'true' : undefined}
+              className={`chip min-h-[36px] select-none border px-3.5 text-[13px] transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-1 active:scale-95 ${
+                sort === k
+                  ? 'border-navy bg-navy text-white shadow-[0_4px_12px_-4px_rgba(14,42,107,.55)] hover:bg-navy/90 active:bg-navy/80'
+                  : 'border-ivory-line bg-white text-navy hover:-translate-y-px hover:border-navy/40 hover:bg-ivory-soft hover:shadow-sm active:translate-y-0 active:bg-ivory-ph'
+              }`}
+            >
+              {sort === k && <span aria-hidden="true" className="mr-1">✓</span>}
+              {label}
+            </Link>
           ))}
-        </div>
+        </nav>
       </div>
       {data.blocked && <div className="card p-6 text-danger">এই ধরনের পণ্য বাংলাদেশে আমদানির অনুমতি নেই, তাই দেখানো হচ্ছে না।</div>}
       {failed && <div className="card p-6">সার্চ এই মুহূর্তে কাজ করছে না। একটু পরে চেষ্টা করুন, অথবা <Link href="/quote" className="font-bold text-emerald">কোটেশন চান</Link>।</div>}

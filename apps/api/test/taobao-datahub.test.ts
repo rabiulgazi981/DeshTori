@@ -105,3 +105,35 @@ test('detail: not found → null, unknown shape → DetailShapeError with keys, 
   }
   assert.throws(() => mapDetail({ result: { status: { code: 500, msg: 'quota' } } }, '1'), /quota/);
 });
+
+test('detail: price only in promotionPrice, string status code, http images, empty images falls back to mainImages', () => {
+  const d = mapDetail(
+    { result: { status: { code: '200' as unknown as number }, item: { itemId: '980276607074', title: 't', itemUrl: '//detail.tmall.com/item.htm?id=980276607074', images: [], mainImages: ['http://img.alicdn.com/m.jpg'], sku: { def: { price: '', promotionPrice: '88.00' }, base: [{ skuId: 1, propMap: '', price: '', promotionPrice: '79.00' }] } } } },
+    '980276607074',
+  )!;
+  assert.equal(d.market, 'TMALL');
+  assert.deepEqual(d.images, ['https://img.alicdn.com/m.jpg']);
+  assert.equal(d.skus[0].fen, 7900);
+  const noVariants = mapDetail(detail({ itemId: '2', title: 't', sku: { def: { promotionPrice: '12.50' } } }), '2')!;
+  assert.equal(noVariants.skus[0].fen, 1250);
+});
+
+// ───────── image search ─────────
+import { mapImageSearch } from '../src/products/taobao-datahub.map';
+
+test('image search: item_search shape is mapped like search', () => {
+  const r = mapImageSearch(ok([item('709942285014', '629.00', '198.55'), item('', '1.00', '1.00')], 50));
+  assert.equal(r.total, 50);
+  assert.equal(r.unknownShape, undefined);
+  assert.deepEqual(r.items, [{ market: 'TMALL', sourceId: '709942285014', titleEn: 'Case', image: 'https://img.alicdn.com/a.jpg', fen: 62900, promoFen: 19855 }]);
+});
+
+test('image search: flat items, 205 empty, error throws, unknown shape reports keys', () => {
+  const flat = mapImageSearch({ result: { status: { code: 200 }, items: [{ itemId: 123, title: 'Bag', pic_url: '//img.alicdn.com/b.jpg', price: '20.00', sales: '15', itemUrl: '//detail.tmall.com/item.htm?id=123' }] } });
+  assert.deepEqual(flat.items, [{ market: 'TMALL', sourceId: '123', titleEn: 'Bag', image: 'https://img.alicdn.com/b.jpg', fen: 2000, soldCount: 15 }]);
+  assert.deepEqual(mapImageSearch({ result: { status: { code: 205 } } }), { items: [], total: 0 });
+  assert.throws(() => mapImageSearch({ result: { status: { code: 5000, msg: 'bad image' } } }), /bad image/);
+  const u = mapImageSearch({ result: { status: { code: 200 }, weird: {} } });
+  assert.deepEqual(u.items, []);
+  assert.match(u.unknownShape!, /result\.weird/);
+});
