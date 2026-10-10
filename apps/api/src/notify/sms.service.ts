@@ -1,6 +1,7 @@
+import { AlphaSms } from './alpha-sms';
+import { IntegrationsService } from '../integrations/integrations.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AlphaSms } from './alpha-sms';
 
 export interface SmsProvider {
   send(to: string, message: string): Promise<void>;
@@ -33,45 +34,39 @@ class HttpSms implements SmsProvider {
 
 @Injectable()
 export class SmsService {
-  private provider: SmsProvider;
-  private alpha?: AlphaSms;
-  readonly providerName: string;
   private log = new Logger('SMS');
+  constructor(private prisma: PrismaService, private integrations: IntegrationsService) {}
+  private async provider(): Promise<SmsProvider> {
+    const c = await this.integrations.resolve('sms');
+    if (c.provider === 'alpha') return new AlphaSms(c.apiKey ?? '', c.senderId);
+    if (c.provider === 'http' && process.env.SMS_HTTP_URL) return new HttpSms(process.env.SMS_HTTP_URL, c.apiKey ?? '', c.senderId ?? 'DeshTori');
+    if (process.env.NODE_ENV === 'production') throw new Error('LIVE_SMS_PROVIDER_REQUIRED');
+    return new ConsoleSms();
+  }
 
-  constructor(private prisma: PrismaService) {
-    const p = process.env.SMS_PROVIDER ?? 'console';
-    if (p === 'alpha' && process.env.SMS_API_KEY) {
-      // Sender ID only once Alpha has approved it; otherwise their default number is used.
-      this.alpha = new AlphaSms(process.env.SMS_API_KEY, process.env.SMS_SENDER_ID || undefined);
-      this.provider = this.alpha;
-      this.providerName = 'alpha';
-    } else if (p === 'http' && process.env.SMS_HTTP_URL) {
-      this.provider = new HttpSms(process.env.SMS_HTTP_URL, process.env.SMS_API_KEY ?? '', process.env.SMS_SENDER_ID ?? 'DeshTori');
-      this.providerName = 'http';
-    } else {
-      if (p !== 'console') this.log.warn(`SMS_PROVIDER=${p} but its settings are missing — SMS will only be printed to the console`);
-      this.provider = new ConsoleSms();
-      this.providerName = 'console';
-    }
-    if (this.providerName === 'console' && process.env.NODE_ENV === 'production') {
-      this.log.error('No SMS gateway configured in production: OTP codes cannot reach customers');
-    }
+  /** Name of the gateway currently configured (dashboard value, else .env). */
+  async providerName(): Promise<string> {
+    const c = await this.integrations.resolve('sms');
+    if (c.provider === 'alpha' && c.apiKey) return 'alpha';
+    if (c.provider === 'http' && process.env.SMS_HTTP_URL) return 'http';
+    return 'console';
   }
 
   /** For the admin panel: which gateway is active and (Alpha only) the balance. Never returns the key. */
   async status(): Promise<{ provider: string; live: boolean; balance?: number; error?: string }> {
-    const live = this.providerName !== 'console';
-    if (!this.alpha) return { provider: this.providerName, live };
+    const provider = await this.providerName();
+    const live = provider !== 'console';
+    if (provider !== 'alpha') return { provider, live };
     try {
-      return { provider: this.providerName, live, balance: await this.alpha.balance() };
+      return { provider, live, balance: await ((await this.provider()) as AlphaSms).balance() };
     } catch (e) {
-      return { provider: this.providerName, live, error: (e as Error).message };
+      return { provider, live, error: (e as Error).message };
     }
   }
 
   async send(to: string, message: string) {
     try {
-      await this.provider.send(to, message);
+      await (await this.provider()).send(to, message);
     } catch (e) {
       this.log.error(`failed to send SMS to ${to}: ${(e as Error).message}`);
       throw e;

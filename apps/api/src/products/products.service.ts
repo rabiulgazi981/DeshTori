@@ -1,30 +1,26 @@
+import { createHash } from 'crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { cnyToBdt, PricingSettings } from '@deshtori/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../prisma/redis.service';
 import { SettingsService } from '../settings/settings.service';
-import { MockProvider } from './mock.provider';
-import { TaobaoDatahubProvider } from './taobao-datahub.provider';
+import { IntegrationsService } from '../integrations/integrations.service';
 import { Alibaba1688Provider } from './alibaba-1688.provider';
+import { TaobaoDatahubProvider } from './taobao-datahub.provider';
+import { MockProvider } from './mock.provider';
 import { Market, parseProductLink, ProductProvider, ProviderProduct, SearchOptions } from './provider';
-
-const createProvider = (): ProductProvider => {
-  switch (process.env.PRODUCT_PROVIDER ?? 'mock') {
-    case 'taobao-datahub': return new TaobaoDatahubProvider(process.env.RAPIDAPI_KEY ?? '', process.env.RAPIDAPI_HOST || undefined, process.env.RAPIDAPI_LOCALE || undefined);
-    case 'alibaba-1688': return new Alibaba1688Provider(process.env.RAPIDAPI_KEY ?? '', process.env.RAPIDAPI_1688_HOST || undefined);
-    // case 'hiobuy': return new HioBuyProvider(process.env.PRODUCT_API_URL!, process.env.PRODUCT_API_KEY!);
-    default:
-      return new MockProvider();
-  }
-};
 
 @Injectable()
 export class ProductsService {
-  private provider = createProvider();
-  private cacheMin = Number(process.env.PRODUCT_CACHE_MINUTES ?? 60);
 
-  constructor(private prisma: PrismaService, private cache: CacheService, private settings: SettingsService) {}
+  constructor(private prisma: PrismaService, private cache: CacheService, private settings: SettingsService, private integrations: IntegrationsService) {}
+
+  private async providerConfig() {
+    const c = await this.integrations.resolve('products');
+    const provider: ProductProvider = c.provider === 'alibaba-1688' ? new Alibaba1688Provider(c.apiKey ?? '', process.env.RAPIDAPI_1688_HOST || undefined) : c.provider === 'taobao-datahub' ? new TaobaoDatahubProvider(c.apiKey ?? '', process.env.RAPIDAPI_HOST || undefined, process.env.RAPIDAPI_LOCALE || undefined) : new MockProvider();
+    return { provider, cacheMin: Number(c.cacheMinutes), revision: createHash('sha256').update(JSON.stringify(c)).digest('hex').slice(0, 16) };
+  }
 
   private async blocked(): Promise<string[]> {
     const hit = await this.cache.get<string[]>('blocked:keywords');
@@ -45,16 +41,17 @@ export class ProductsService {
   }
 
   async search(query: string, opts: SearchOptions) {
+    const { provider, cacheMin, revision } = await this.providerConfig();
     const q = query.trim();
     if (q.length < 2) throw new BadRequestException('QUERY_TOO_SHORT');
     const list = await this.blocked();
     if (this.isBlocked(q, list)) return { items: [], total: 0, blocked: true };
 
-    const key = `search:${this.provider.name}:${q.toLowerCase()}:${opts.page ?? 1}:${opts.market ?? 'ALL'}:${opts.sort ?? 'relevance'}`;
+    const key = `search:${provider.name}:${revision}:${q.toLowerCase()}:${opts.page ?? 1}:${opts.market ?? 'ALL'}:${opts.sort ?? 'relevance'}`;
     let raw = await this.cache.get<Awaited<ReturnType<ProductProvider['search']>>>(key);
     if (!raw) {
-      raw = await this.provider.search(q, opts);
-      await this.cache.set(key, raw, this.cacheMin * 60);
+      raw = await provider.search(q, opts);
+      await this.cache.set(key, raw, cacheMin * 60);
     }
     const s = await this.settings.get();
     const items = raw.items
@@ -64,8 +61,9 @@ export class ProductsService {
   }
 
   async searchByImage(imageUrl: string, opts: SearchOptions) {
+    const { provider } = await this.providerConfig();
     const list = await this.blocked();
-    const raw = await this.provider.searchByImage(imageUrl, opts);
+    const raw = await provider.searchByImage(imageUrl, opts);
     const s = await this.settings.get();
     const items = raw.items
       .filter((i) => !this.isBlocked(i.titleEn, list))
@@ -108,10 +106,11 @@ export class ProductsService {
 
   /** Cached detail: DB row is reused until it is older than the cache window. */
   async fetchAndStore(market: Market, sourceId: string) {
+    const { provider, cacheMin } = await this.providerConfig();
     const existing = await this.prisma.product.findUnique({ where: { marketplace_sourceId: { marketplace: market, sourceId } } });
-    const fresh = existing && Date.now() - existing.fetchedAt.getTime() < this.cacheMin * 60_000;
+    const fresh = existing && Date.now() - existing.fetchedAt.getTime() < cacheMin * 60_000;
     if (existing && fresh) return existing;
-    const d = await this.provider.detail(market, sourceId);
+    const d = await provider.detail(market, sourceId);
     if (!d) {
       if (existing) return existing;
       throw new NotFoundException('PRODUCT_NOT_FOUND');

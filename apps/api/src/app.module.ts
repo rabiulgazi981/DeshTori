@@ -1,3 +1,4 @@
+import { IntegrationsModule } from './integrations/integrations.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -19,6 +20,7 @@ import { HealthController } from './health.controller';
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
+    IntegrationsModule,
     SettingsModule,
     NotifyModule,
     AuthModule,

@@ -33,7 +33,7 @@ export class SmsController {
     } catch (e) {
       throw new BadRequestException((e as Error).message);
     }
-    await this.audit.log({ actorId: r.user.id, action: 'SMS_TEST', entity: 'Sms', after: { to: phone, provider: this.sms.providerName } });
-    return { ok: true, provider: this.sms.providerName };
+    await this.audit.log({ actorId: r.user.id, action: 'SMS_TEST', entity: 'Sms', after: { to: phone, provider: await this.sms.providerName() } });
+    return { ok: true, provider: await this.sms.providerName() };
   }
 }

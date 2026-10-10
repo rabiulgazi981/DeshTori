@@ -26,6 +26,8 @@ const NAV: { group: string; items: Item[] }[] = [
   ] },
   { group: 'হিসাব', items: [{ href: '/admin/accounts', label: 'হিসাব ও উত্তোলন', icon: '📒', roles: ['ACCOUNTS'] }] },
   { group: 'সেটিংস', items: [
+    { href: '/admin/integrations', label: 'API & Integrations', icon: '🔌', roles: ['OWNER'] },
+    { href: '/admin/appearance', label: 'Website Appearance', icon: '🎨', roles: ['OWNER'] },
     { href: '/admin/content', label: 'ওয়েবসাইট কনটেন্ট', icon: '🖼', roles: ['OWNER'] },
     { href: '/admin/settings', label: 'রেট, নোটিশ ও নিষিদ্ধ', icon: '⚙️', roles: ['OWNER'] },
     { href: '/admin/staff', label: 'স্টাফ ও অডিট', icon: '🔐', roles: ['OWNER'] },
