@@ -53,6 +53,11 @@ export class AuthService {
     await this.prisma.otpCode.create({
       data: { phone, purpose, codeHash: this.hashOtp(phone, code), expiresAt: new Date(Date.now() + OTP_TTL_MIN * 60_000) },
     });
+    // Before an SMS gateway exists, staff can opt in to reading their 2FA code from the server log.
+    if (purpose === 'STAFF_2FA' && process.env.STAFF_OTP_TO_LOG === 'true' && (await this.sms.providerName()) === 'console') {
+      this.log.warn(`Staff login code for ${phone}: ${code} (STAFF_OTP_TO_LOG; set up SMS and remove it)`);
+      return { sent: true, ttlMinutes: OTP_TTL_MIN };
+    }
     try {
       await this.sms.send(phone, `DeshTori কোড: ${code}। ${OTP_TTL_MIN} মিনিট কাজ করবে। কাউকে বলবেন না।`);
     } catch (e) {

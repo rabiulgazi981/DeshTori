@@ -118,8 +118,13 @@ Start with `node scripts/render-start.cjs`. Set `NODE_ENV=production`,
 `DATABASE_URL` to the Neon pooled connection, and distinct random secrets of at
 least 32 characters for `JWT_SECRET` and `INTEGRATIONS_ENCRYPTION_KEY`.
 Set `SEED_OWNER_PHONE` and `SEED_OWNER_PASSWORD` to initialize the owner and
-default freight settings on an empty database. Remove the seed password after
-the first successful deployment. Never commit secrets.
+default freight settings on an empty database. On a database that already has
+users, a set `SEED_OWNER_PASSWORD` resets the owner's password and login lock on
+every boot, so remove it once you can log in. Never commit secrets.
+
+Staff login needs an SMS code. Until an SMS gateway is configured, set
+`STAFF_OTP_TO_LOG=true` to have the staff code written to the Render log
+instead; remove it once SMS works.
 
 The startup script uses a direct connection for versioned Prisma migrations,
 refuses to migrate an existing database without migration history, and only
