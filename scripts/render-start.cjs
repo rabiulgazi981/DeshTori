@@ -11,6 +11,22 @@ function run(file, args, cwd, env) {
     child.on('exit', code => code === 0 ? resolveExit() : reject(new Error(`Setup exited with code ${code}`)));
   });
 }
+// While SEED_OWNER_PASSWORD is set, every boot makes it the owner's password and clears any login lock,
+// so a forgotten or mistyped owner password is fixed by editing the env var. Remove the var after logging in.
+async function resetOwnerPassword(PrismaClient) {
+  const bcrypt = require('../apps/api/node_modules/bcryptjs');
+  const phone = process.env.SEED_OWNER_PHONE || '+8801938273878';
+  const db = new PrismaClient();
+  try {
+    const passwordHash = await bcrypt.hash(process.env.SEED_OWNER_PASSWORD, 12);
+    await db.user.upsert({
+      where: { phone },
+      create: { phone, phoneVerified: true, kind: 'STAFF', roles: ['OWNER'], name: 'Owner', passwordHash },
+      update: { kind: 'STAFF', roles: ['OWNER'], passwordHash, failedLogins: 0, lockedUntil: null },
+    });
+    console.log(`Owner password set for ${phone}.`);
+  } finally { await db.$disconnect(); }
+}
 async function main() {
   if (process.env.RENDER_EXTERNAL_URL) {
     process.env.WEB_ORIGIN ||= process.env.RENDER_EXTERNAL_URL;
@@ -36,6 +52,7 @@ async function main() {
     let empty;
     try { empty = await seededDb.user.count() === 0; } finally { await seededDb.$disconnect(); }
     if (empty) await run(resolve(apiRoot, 'node_modules/ts-node/dist/bin.js'), ['--transpile-only', '-O', '{"module":"commonjs"}', 'prisma/seed.ts'], apiRoot, process.env);
+    else await resetOwnerPassword(PrismaClient);
   }
   const api = spawn(process.execPath, ['--max-old-space-size=160', 'dist/main.js'], {
     cwd: apiRoot, stdio: 'inherit', env: { ...process.env, PORT: '4000' },
