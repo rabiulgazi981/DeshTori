@@ -5,6 +5,7 @@ import { api, ApiError, errText } from '@/lib/api';
 import type { SearchItem } from '@/lib/types';
 import { ProductCard } from '@/components/ProductCard';
 import { toBanglaDigits } from '@deshtori/shared';
+import { PENDING_IMAGE_EVENT, takePendingImage } from '@/lib/pendingImage';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp';
 const MAX_SIDE = 1600;
@@ -90,6 +91,15 @@ export default function ImageSearch() {
       setPhase('error');
     }
   };
+
+  // a photo picked from the header camera button
+  useEffect(() => {
+    const take = () => { const f = takePendingImage(); if (f) void pick(f); };
+    take();
+    window.addEventListener(PENDING_IMAGE_EVENT, take);
+    return () => window.removeEventListener(PENDING_IMAGE_EVENT, take);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     void pick(e.target.files?.[0]);
