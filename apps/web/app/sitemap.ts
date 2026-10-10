@@ -1,13 +1,13 @@
 import type { MetadataRoute } from 'next';
-import { getContent, type Post } from '@/lib/content';
-
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://deshtori.com';
+import { categoriesOf, getPosts, postUrl, SITE_URL } from '@/lib/blog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fixed = ['', '/ship', '/rates', '/quote', '/image-search', '/about', '/terms', '/privacy', '/refund-policy', '/blog'];
-  const posts = ((await getContent<Post[]>('blog')) ?? []).filter((p) => p.slug);
+  const posts = await getPosts();
+  const date = (s?: string) => (s && !Number.isNaN(Date.parse(s)) ? new Date(s) : undefined);
   return [
-    ...fixed.map((p) => ({ url: `${SITE}${p}`, changeFrequency: 'weekly' as const, priority: p ? 0.6 : 1 })),
-    ...posts.map((p) => ({ url: `${SITE}/blog/${p.slug}`, lastModified: p.date ? new Date(p.date) : undefined, priority: 0.5 })),
+    ...fixed.map((p) => ({ url: `${SITE_URL}${p}`, changeFrequency: 'weekly' as const, priority: p ? 0.6 : 1 })),
+    ...categoriesOf(posts).map((c) => ({ url: `${SITE_URL}/blog?category=${encodeURIComponent(c)}`, changeFrequency: 'weekly' as const, priority: 0.4 })),
+    ...posts.map((p) => ({ url: postUrl(p), lastModified: date(p.date), changeFrequency: 'monthly' as const, priority: 0.7 })),
   ];
 }

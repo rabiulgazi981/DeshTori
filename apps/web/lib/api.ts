@@ -62,18 +62,31 @@ export const ERR_BN: Record<string, string> = {
   SHIP_REQUESTS_NOT_READY: 'পার্সেল এখনো গুদামে পৌঁছায়নি',
   CANNOT_DEMOTE_SELF: 'নিজের OWNER রোল সরানো যাবে না',
   WALLET_NEGATIVE: 'ব্যালেন্স মাইনাস হয়ে যাবে',
+  TOO_LARGE: 'কনটেন্ট অনেক বড় হয়ে গেছে — কিছু অংশ ছোট করুন',
 };
 export const errText = (e: unknown) => (e instanceof ApiError ? ERR_BN[e.code] ?? e.code : 'কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন');
 
-/** Read a picked image file as a data URL and upload it. Returns the public URL. */
-export async function uploadImage(file: File): Promise<string> {
-  if (file.size > 4 * 1024 * 1024) throw new ApiError(400, 'IMAGE_TOO_LARGE', null);
-  const dataUrl = await new Promise<string>((res, rej) => {
+const readDataUrl = (file: File) =>
+  new Promise<string>((res, rej) => {
     const fr = new FileReader();
     fr.onload = () => res(String(fr.result));
     fr.onerror = () => rej(fr.error);
     fr.readAsDataURL(file);
   });
-  const r = await api<{ url: string }>('/uploads', { method: 'POST', json: { dataUrl } });
+
+/** Read a picked image file as a data URL and upload it. Returns the public URL. */
+export async function uploadImage(file: File): Promise<string> {
+  if (file.size > 4 * 1024 * 1024) throw new ApiError(400, 'IMAGE_TOO_LARGE', null);
+  const r = await api<{ url: string }>('/uploads', { method: 'POST', json: { dataUrl: await readDataUrl(file), name: file.name } });
   return r.url;
+}
+
+/** An image in the admin media library (stored in Postgres, served at /api/uploads/<id>.<ext>). */
+export interface MediaItem { id: string; name: string; mime: string; size: number; width: number | null; height: number | null; scope: 'LIBRARY' | 'UPLOAD'; createdAt: string; url: string }
+
+/** Staff only: upload one image into the media library. */
+export async function uploadToLibrary(file: File): Promise<MediaItem> {
+  if (file.size > 4 * 1024 * 1024) throw new ApiError(400, 'IMAGE_TOO_LARGE', null);
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new ApiError(400, 'IMAGE_ONLY', null);
+  return api<MediaItem>('/admin/media', { method: 'POST', json: { dataUrl: await readDataUrl(file), name: file.name } });
 }
