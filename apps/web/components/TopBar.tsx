@@ -3,11 +3,36 @@ import { useEffect, useState } from 'react';
 import type { PublicSettings } from '@/lib/types';
 
 type Theme = 'light' | 'dark' | 'system';
+type Lang = 'bn' | 'en';
+
+/** English uses Google's page translator; the choice lives in its `googtrans` cookie. */
+const readLang = (): Lang => (/(?:^|;\s*)googtrans=\/bn\/en/.test(document.cookie) ? 'en' : 'bn');
+function setLang(l: Lang) {
+  const host = location.hostname;
+  const domains = ['', `; domain=${host}`, `; domain=.${host.replace(/^www\./, '')}`];
+  for (const d of domains) document.cookie = l === 'en' ? `googtrans=/bn/en; path=/${d}` : `googtrans=; path=/; max-age=0${d}`;
+  location.reload();
+}
+function loadTranslator() {
+  if (document.getElementById('gt-script')) return;
+  const w = window as unknown as { googleTranslateInit?: () => void; google?: { translate: { TranslateElement: new (o: object, id: string) => unknown } } };
+  w.googleTranslateInit = () => w.google && new w.google.translate.TranslateElement({ pageLanguage: 'bn', includedLanguages: 'en', autoDisplay: false }, 'gt-el');
+  const el = document.createElement('div');
+  el.id = 'gt-el';
+  el.style.display = 'none';
+  document.body.appendChild(el);
+  const s = document.createElement('script');
+  s.id = 'gt-script';
+  s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateInit';
+  s.async = true;
+  document.body.appendChild(s);
+}
 const SPEED = { slow: '45s', normal: '30s', fast: '18s' } as const;
 
 export function TopBar({ notice }: { notice?: PublicSettings['notice'] }) {
   const [theme, setTheme] = useState<Theme>('light');
   const [open, setOpen] = useState(false);
+  const [lang, setLangState] = useState<Lang>('bn');
 
   useEffect(() => {
     try {
@@ -15,6 +40,9 @@ export function TopBar({ notice }: { notice?: PublicSettings['notice'] }) {
     } catch {
       /* storage blocked */
     }
+    const l = readLang();
+    setLangState(l);
+    if (l === 'en') loadTranslator();
   }, []);
 
   const apply = (t: Theme) => {
@@ -52,11 +80,25 @@ export function TopBar({ notice }: { notice?: PublicSettings['notice'] }) {
           </div>
         )}
         <div className="ml-auto flex flex-none items-center gap-1" role="group" aria-label="ভাষা">
-          <button className="rounded-lg bg-gold px-3 py-0.5 text-[13px] font-bold text-navy" aria-pressed="true">বাংলা</button>
-          <button className="rounded-lg border border-white/30 px-3 py-0.5 text-[13px] font-semibold text-white" aria-pressed="false">English</button>
+          {(
+            [
+              ['bn', 'বাংলা'],
+              ['en', 'English'],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => k !== lang && setLang(k)}
+              aria-pressed={lang === k}
+              translate="no"
+              className={`notranslate rounded-lg px-3 py-0.5 text-[13px] font-bold transition active:scale-95 ${lang === k ? 'bg-gold text-navy shadow-gold' : 'border border-white/30 text-white hover:border-gold hover:bg-white/10'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="relative flex-none">
-          <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label="থিম বদলান" className="flex h-7 w-8 items-center justify-center rounded-lg border border-white/30 text-white">
+          <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label="থিম বদলান" className="flex h-7 w-8 items-center justify-center rounded-lg border border-white/30 text-white transition hover:border-gold hover:bg-white/10 active:scale-95">
             {theme === 'dark' ? '☾' : theme === 'system' ? '🖥' : '☀'}
           </button>
           {open && (
