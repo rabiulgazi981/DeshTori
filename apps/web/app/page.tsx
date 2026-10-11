@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 import type { SearchItem } from '@/lib/types';
-import { ProductCard } from '@/components/ProductCard';
 import { Videos } from '@/components/Videos';
 import { Popup } from '@/components/Popup';
+import { HeroSlider } from '@/components/home/HeroSlider';
+import { CategoryMenu } from '@/components/home/CategoryMenu';
+import { ProductTabs } from '@/components/home/ProductTabs';
+import { ChatBubble } from '@/components/home/ChatBubble';
+import { categoryHref, withCategoryDefaults } from '@/lib/categories';
 import { getContent, type Banner, type Campaign, type Category, type Popup as PopupT, type Service, type Video } from '@/lib/content';
 
-const CATEGORIES = [
-  ['Shoes', 'জুতা'], ['Bags', 'ব্যাগ'], ['Jewelry', 'জুয়েলারি'], ['Beauty', 'বিউটি'], ['Men Clothing', 'ছেলেদের পোশাক'], ['Women Clothing', 'মেয়েদের পোশাক'],
-  ['Baby Items', 'শিশু'], ['Phone Accessories', 'ফোন এক্সেসরিজ'], ['Electronics', 'ইলেকট্রনিক্স'], ['Home & Kitchen', 'ঘর ও রান্নাঘর'], ['Watches', 'ঘড়ি'], ['Sports', 'খেলাধুলা'],
-];
+/** Banner fields the admin banner editor may add; older saved banners have none of them (= hero, active). */
+type BannerX = Banner & { placement?: 'hero' | 'wide'; active?: boolean; order?: number; subtitle?: string; buttonText?: string; showButton?: boolean; width?: 'full' | 'contained' };
 
 async function trending(): Promise<SearchItem[]> {
   try {
@@ -20,24 +22,29 @@ async function trending(): Promise<SearchItem[]> {
   }
 }
 
-const DEFAULT_SERVICES: Service[] = [
-  { icon: '🛍', title: 'আমরা কিনে দিই', text: '1688/Taobao থেকে আপনার হয়ে কিনে, চেক করে পাঠাই।' },
-  { icon: '🚚', title: 'শুধু শিপিং', text: 'নিজে কিনেছেন? আমাদের চায়না গুদামে পাঠান, আমরা দেশে আনব।' },
-  { icon: '✈️', title: 'Air ৭–১৫ দিন', text: 'গুয়াংজু ও হংকং থেকে নিয়মিত ফ্লাইট।' },
-  { icon: '🚢', title: 'Sea ৪৫–৬৫ দিন', text: 'ভারী ও বেশি পণ্যে কম খরচে।' },
+const DEFAULT_SERVICES: (Service & { bg: string })[] = [
+  { icon: '🏭', title: 'সরাসরি কারখানা থেকে কিনি', text: 'আপনার অর্ডার আমরা চীনের কারখানা, গুদাম বা মূল সেলারের কাছ থেকে সরাসরি কিনি। মাঝে কোনো দালাল নেই।', bg: '📦' },
+  { icon: '🚚', title: 'শুধু শিপিং', text: 'নিজে কিনেছেন? আমাদের চায়না গুদামে পাঠান, আমরা দেশে আনব।', bg: '🚛' },
+  { icon: '✈️', title: 'Air ৭–১৫ দিন', text: 'গুয়াংজু ও হংকং থেকে নিয়মিত ফ্লাইট।', bg: '✈️' },
+  { icon: '🚢', title: 'Sea ৪৫–৬৫ দিন', text: 'ভারী ও বেশি পণ্যে কম খরচে।', bg: '🚢' },
 ];
 
 export default async function Home() {
   const [items, banners, videos, cats, services, popup, campaign] = await Promise.all([
     trending(),
-    getContent<Banner[]>('banners'),
+    getContent<BannerX[]>('banners'),
     getContent<Video[]>('videos'),
     getContent<Category[]>('categories'),
     getContent<Service[]>('services'),
     getContent<PopupT>('popup'),
     getContent<Campaign>('campaign'),
   ]);
-  const categories: Category[] = cats?.length ? cats : CATEGORIES.map(([en, bn]) => ({ name: bn, query: en }));
+  const categories = withCategoryDefaults(cats);
+  const live = (banners ?? []).filter((b) => b.image && b.active !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const hero = live.filter((b) => (b.placement ?? 'hero') === 'hero').map((b) => ({ image: b.image!, title: b.showButton === false ? undefined : b.buttonText || b.title, link: b.link }));
+  const wide = live.filter((b) => b.placement === 'wide');
+  const serviceCards = services?.length ? services.map((s, n) => ({ ...s, bg: DEFAULT_SERVICES[n % 4].bg })) : DEFAULT_SERVICES;
+
   return (
     <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-3 py-5 md:px-6">
       <Popup p={popup} />
@@ -47,58 +54,61 @@ export default async function Home() {
           {campaign.couponCode && <span className="rounded-xl bg-white px-4 py-2 font-bold tracking-wider text-navy">কোড: {campaign.couponCode}</span>}
         </section>
       )}
-      {!!banners?.length && (
-        <section className="flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-3xl" aria-label="অফার">
-          {banners.filter((b) => b.image).map((b, i) => (
-            <a key={i} href={b.link || '#'} className="relative block w-full flex-none snap-center overflow-hidden rounded-3xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.image} alt={b.title ?? ''} className="block aspect-[3/1] w-full object-cover" loading={i ? 'lazy' : 'eager'} />
-            </a>
-          ))}
-        </section>
-      )}
-      <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#1A3C8A] to-[#0A1F52] p-6 text-white md:p-10">
-        <span className="chip bg-white/10 text-gold-light">1688 · Taobao · নিজস্ব চায়না টিম</span>
-        <h1 className="mt-3 text-3xl font-bold leading-tight md:text-5xl">
-          চীনের বাজার থেকে <span className="text-gold">আপনার দুয়ারে।</span>
-        </h1>
-        <p className="mt-3 max-w-xl text-[#C8D3EA] md:text-lg">যেকোনো পণ্য, বাংলা টাকায় লাইভ দাম, অল্প পরিমাণেও অর্ডার। Air-এ ৭–১৫ দিন, Sea-তে ৪৫–৬৫ দিন।</p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/search?q=phone%20case" className="btn-gold">পণ্য খুঁজুন</Link>
-          <Link href="/ship" className="btn border border-white/40 text-white">শিপিং সার্ভিস</Link>
-        </div>
-      </section>
+
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <CategoryMenu categories={categories} />
+        <div className="flex min-w-0 flex-1"><HeroSlider slides={hero} /></div>
+      </div>
+
+      {wide.map((b, i) => {
+        const img = (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={b.image} alt={b.title ?? ''} loading="lazy" className="block aspect-[5/1] min-h-[90px] w-full object-cover" />
+        );
+        return (
+          <section key={i} className={`group relative overflow-hidden shadow-card ${b.width === 'contained' ? 'rounded-3xl' : '-mx-3 md:-mx-6'}`} aria-label={b.title || 'অফার'}>
+            {b.link ? <Link href={b.link} className="block transition group-hover:brightness-105">{img}</Link> : img}
+            {(b.title || (b.showButton && b.link)) && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-3 bg-gradient-to-r from-black/40 to-transparent p-4 md:p-8">
+                <div className="text-white drop-shadow">
+                  {b.title && <b className="text-lg md:text-3xl">{b.title}</b>}
+                  {b.subtitle && <p className="text-sm md:text-base">{b.subtitle}</p>}
+                </div>
+                {b.showButton && b.link && <span className="btn-gold pointer-events-auto">{b.buttonText || 'দেখুন'}</span>}
+              </div>
+            )}
+          </section>
+        );
+      })}
 
       <section className="card p-5">
         <h2 className="mb-4 flex items-center gap-2.5 text-xl font-bold"><span className="h-5 w-1.5 rounded bg-gold" />ক্যাটাগরি</h2>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
           {categories.map((c) => (
-            <Link key={c.name} href={`/search?q=${encodeURIComponent(c.query || c.name || '')}`} className="flex flex-col items-center gap-2 rounded-xl bg-ivory p-3 text-center text-sm font-semibold hover:bg-ivory-soft">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {c.image ? <img src={c.image} alt="" className="aspect-square w-full rounded-lg object-cover" loading="lazy" /> : <span className="aspect-square w-full rounded-lg bg-ivory-ph" />}
+            <Link key={c.name} href={categoryHref(c)} className="group flex flex-col items-center gap-2 rounded-2xl border border-transparent bg-ivory p-2.5 text-center text-sm font-semibold transition hover:-translate-y-1 hover:border-gold hover:bg-white hover:shadow-gold active:translate-y-0 active:scale-95">
+              {c.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.image} alt="" className="aspect-square w-full rounded-xl object-cover" loading="lazy" />
+              ) : (
+                <span className="flex aspect-square w-full items-center justify-center rounded-xl bg-gradient-to-br from-white to-gold-chip text-4xl shadow-[inset_0_1px_0_#fff,0_4px_10px_-6px_rgba(14,42,107,.4)] transition group-hover:scale-105 md:text-5xl" aria-hidden="true">{c.icon}</span>
+              )}
               {c.name}
             </Link>
           ))}
         </div>
       </section>
 
-      <section className="card p-5">
-        <h2 className="mb-4 flex items-center gap-2.5 text-xl font-bold"><span className="h-5 w-1.5 rounded bg-gold" />সবচেয়ে বেশি অর্ডার হওয়া পণ্য</h2>
-        {items.length ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{items.map((p) => <ProductCard key={p.market + p.id} p={p} />)}</div>
-        ) : (
-          <p className="text-muted">এই মুহূর্তে পণ্য লোড করা যাচ্ছে না। API চালু আছে কিনা দেখুন।</p>
-        )}
-      </section>
+      <ProductTabs initial={items} />
 
       <section className="card p-5">
         <h2 className="mb-4 flex items-center gap-2.5 text-xl font-bold"><span className="h-5 w-1.5 rounded bg-gold" />আমাদের সেবা</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {(services?.length ? services : DEFAULT_SERVICES).map((sv) => (
-            <div key={sv.title} className="flex flex-col gap-1 rounded-2xl bg-ivory p-4">
-              <span className="text-3xl" aria-hidden="true">{sv.icon}</span>
-              <b>{sv.title}</b>
-              <p className="text-sm text-muted">{sv.text}</p>
+          {serviceCards.map((sv) => (
+            <div key={sv.title} className="group relative flex flex-col gap-1.5 overflow-hidden rounded-2xl border border-gold/30 bg-gradient-to-br from-white via-ivory to-gold-chip p-5 shadow-card transition hover:-translate-y-1 hover:border-gold hover:shadow-gold">
+              <span className="pointer-events-none absolute -bottom-4 -right-3 select-none text-[96px] leading-none opacity-[.08] transition group-hover:opacity-[.14]" aria-hidden="true">{sv.bg}</span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-navy text-2xl shadow-md" aria-hidden="true">{sv.icon}</span>
+              <b className="mt-1 text-lg">{sv.title}</b>
+              <p className="relative text-sm text-muted">{sv.text}</p>
             </div>
           ))}
         </div>
@@ -110,6 +120,7 @@ export default async function Home() {
           <Videos items={videos} />
         </section>
       )}
+      <ChatBubble />
     </div>
   );
 }

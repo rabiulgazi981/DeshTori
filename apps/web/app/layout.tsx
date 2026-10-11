@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { getAppearance } from '@/lib/appearance';
 import type { Metadata } from 'next';
-import { Hind_Siliguri, Cinzel } from 'next/font/google';
+import { Noto_Sans_Bengali, Cinzel } from 'next/font/google';
 import './globals.css';
 import { TopBar } from '@/components/TopBar';
 import { Header } from '@/components/Header';
@@ -11,7 +11,7 @@ import { API_URL } from '@/lib/api';
 import type { PublicSettings } from '@/lib/types';
 import { getContent, type Seo } from '@/lib/content';
 
-const hind = Hind_Siliguri({ subsets: ['bengali', 'latin'], weight: ['400', '500', '600', '700'], variable: '--font-hind' });
+const bangla = Noto_Sans_Bengali({ subsets: ['bengali', 'latin'], weight: ['400', '500', '600', '700'], variable: '--font-bn', display: 'swap' });
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['700', '800'], variable: '--font-cinzel' });
 
 const BASE: Metadata = {
@@ -48,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [settings, appearance] = await Promise.all([getSettings(), getAppearance()]);
   const colors = Object.fromEntries(Object.entries({ navy: appearance.primary, gold: appearance.accent, emerald: appearance.secondary, ivory: appearance.background }).map(([name, hex]) => [`--dt-${name}`, /^#[a-fA-F0-9]{6}$/.test(hex) ? `${parseInt(hex.slice(1, 3), 16)} ${parseInt(hex.slice(3, 5), 16)} ${parseInt(hex.slice(5, 7), 16)}` : undefined])) as CSSProperties;
   return (
-    <html lang="bn" className={`${hind.variable} ${cinzel.variable}`} suppressHydrationWarning style={colors}>
+    <html lang="bn" className={`${bangla.variable} ${cinzel.variable}`} suppressHydrationWarning style={colors}>
       <head>
         {/* apply saved theme before paint (no flash) */}
         <script

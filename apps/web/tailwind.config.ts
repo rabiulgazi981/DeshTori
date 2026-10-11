@@ -15,7 +15,7 @@ const config: Config = {
         danger: '#9A2B1F',
       },
       fontFamily: {
-        sans: ['var(--font-hind)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-bn)', 'Noto Sans Bengali', 'system-ui', 'sans-serif'],
         brand: ['var(--font-cinzel)', 'serif'],
       },
       boxShadow: {

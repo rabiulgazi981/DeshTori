@@ -10,7 +10,8 @@ html[data-theme='dark'] body { background: #0B1630; color: #E6ECF8; }
 @layer components {
   .card { @apply bg-white border border-ivory-line rounded-2xl shadow-card; }
   html[data-theme='dark'] .card { background: #121F3D; border-color: #2A3B66; box-shadow: none; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl font-bold min-h-[44px] px-5 transition active:translate-y-px disabled:opacity-50; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl font-bold min-h-[44px] px-5 transition duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[.97] disabled:pointer-events-none disabled:opacity-50; }
+  .btn-outline:hover { @apply border-gold bg-gold-chip; }
   .btn-gold { @apply btn text-navy shadow-gold; background-image: linear-gradient(180deg, #F9E39A 0%, #D9AE45 48%, #B07E22 100%); }
   .btn-navy { @apply btn text-white; background-image: linear-gradient(180deg, #1A3C8A 0%, #0E2A6B 55%, #0A1F52 100%); }
   .btn-outline { @apply btn border border-navy text-navy bg-white font-semibold; }
@@ -34,3 +35,18 @@ html[data-theme='dark'] body { background: #0B1630; color: #E6ECF8; }
 .btn-gold { background-image: linear-gradient(180deg, rgb(var(--dt-gold) / .7), rgb(var(--dt-gold))); }
 .btn-navy { background-image: linear-gradient(180deg, rgb(var(--dt-navy) / .8), rgb(var(--dt-navy))); }
 header[role], header.relative { background-image: linear-gradient(180deg, rgb(var(--dt-navy) / .9), rgb(var(--dt-navy))); }
+
+/* Pressed feedback for any link or button that has no style of its own. */
+a, button { -webkit-tap-highlight-color: rgba(212, 169, 58, .25); }
+
+/* Google page translator (English): hide its toolbar and keep the page where it was. */
+.goog-te-banner-frame, .skiptranslate > iframe, #goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
+body { top: 0 !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }
+
+/* Homepage hero slider and chat bubble */
+@keyframes dt-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dt-pop { 0% { opacity: 0; transform: translateY(16px) scale(.9); } 100% { opacity: 1; transform: none; } }
+.dt-pop { animation: dt-pop .35s cubic-bezier(.2,.9,.3,1.2) both; }
+.dt-fade { animation: dt-fade .6s ease both; }
+@media (prefers-reduced-motion: reduce) { .dt-pop, .dt-fade { animation: none; } }
