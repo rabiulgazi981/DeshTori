@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { cnyToBdt, PricingSettings } from '@deshtori/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,8 +11,13 @@ import { TaobaoDatahubProvider } from './taobao-datahub.provider';
 import { MockProvider } from './mock.provider';
 import { Market, parseProductLink, ProductProvider, ProviderProduct, SearchOptions } from './provider';
 
+/** Image search is open to guests, so it is rate limited per IP and overall (RapidAPI quota). */
+const IMAGE_SEARCH_PER_IP = { limit: 10, windowSec: 600 };
+const IMAGE_SEARCH_GLOBAL = { limit: 300, windowSec: 3600 };
+
 @Injectable()
 export class ProductsService {
+  private log = new Logger('Products');
 
   constructor(private prisma: PrismaService, private cache: CacheService, private settings: SettingsService, private integrations: IntegrationsService) {}
 
@@ -60,10 +65,22 @@ export class ProductsService {
     return { items, total: raw.total, blocked: false };
   }
 
+  /** Throws 429 IMAGE_SEARCH_LIMIT when an IP (or everyone together) searches too often. */
+  async imageSearchAllowed(ip: string) {
+    if ((await this.cache.incr(`imgsearch:ip:${ip}`, IMAGE_SEARCH_PER_IP.windowSec)) > IMAGE_SEARCH_PER_IP.limit) throw new HttpException('IMAGE_SEARCH_LIMIT', HttpStatus.TOO_MANY_REQUESTS);
+    if ((await this.cache.incr('imgsearch:all', IMAGE_SEARCH_GLOBAL.windowSec)) > IMAGE_SEARCH_GLOBAL.limit) throw new HttpException('IMAGE_SEARCH_LIMIT', HttpStatus.TOO_MANY_REQUESTS);
+  }
+
   async searchByImage(imageUrl: string, opts: SearchOptions) {
     const { provider } = await this.providerConfig();
     const list = await this.blocked();
-    const raw = await provider.searchByImage(imageUrl, opts);
+    let raw: Awaited<ReturnType<ProductProvider['searchByImage']>>;
+    try {
+      raw = await provider.searchByImage(imageUrl, opts);
+    } catch (e) {
+      this.log.error(`image search via ${provider.name} failed: ${(e as Error).message}`);
+      throw new ServiceUnavailableException('IMAGE_SEARCH_FAILED');
+    }
     const s = await this.settings.get();
     const items = raw.items
       .filter((i) => !this.isBlocked(i.titleEn, list))
@@ -110,7 +127,14 @@ export class ProductsService {
     const existing = await this.prisma.product.findUnique({ where: { marketplace_sourceId: { marketplace: market, sourceId } } });
     const fresh = existing && Date.now() - existing.fetchedAt.getTime() < cacheMin * 60_000;
     if (existing && fresh) return existing;
-    const d = await provider.detail(market, sourceId);
+    let d: ProviderProduct | null;
+    try {
+      d = await provider.detail(market, sourceId);
+    } catch (e) {
+      this.log.error(`detail ${market}/${sourceId} via ${provider.name} failed: ${(e as Error).message}`);
+      if (existing) return existing; // stale copy beats an error page
+      throw new ServiceUnavailableException('PRODUCT_PROVIDER_FAILED');
+    }
     if (!d) {
       if (existing) return existing;
       throw new NotFoundException('PRODUCT_NOT_FOUND');
@@ -129,10 +153,13 @@ export class ProductsService {
       soldCount: d.soldCount,
       fetchedAt: new Date(),
     };
-    return this.prisma.product.upsert({
-      where: { marketplace_sourceId: { marketplace: market, sourceId } },
-      create: { marketplace: market, sourceId, ...data },
-      update: data,
-    });
+    const where = { marketplace_sourceId: { marketplace: market, sourceId } };
+    try {
+      return await this.prisma.product.upsert({ where, create: { marketplace: market, sourceId, ...data }, update: data });
+    } catch (e) {
+      // two first-time requests for the same item race on create → the other one won, use its row
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return this.prisma.product.update({ where, data });
+      throw e;
+    }
   }
 }

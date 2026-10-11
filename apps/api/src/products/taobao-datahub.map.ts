@@ -13,7 +13,7 @@ export const yuanToFen = (v: string | number | undefined | null): number => {
   const n = typeof v === 'number' ? v : parseFloat(v ?? '');
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 };
-export const https = (u?: string | null) => (!u ? '' : u.startsWith('//') ? `https:${u}` : u);
+export const https = (u?: string | null) => (!u ? '' : u.startsWith('//') ? `https:${u}` : u.startsWith('http://') ? `https://${u.slice(7)}` : u);
 const num = (v: unknown): number | undefined => {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
   return Number.isFinite(n) ? n : undefined;
@@ -31,9 +31,10 @@ export interface RawSearch {
 
 export const mapSearch = (raw: RawSearch): { items: ProviderSearchHit[]; total: number } => {
   const r = raw.result;
+  const code = Number(r?.status?.code);
   // 205 = request fine, no results
-  if (r?.status?.code === 205) return { items: [], total: 0 };
-  if (r?.status?.code !== 200) throw new Error(`taobao-datahub search failed: ${JSON.stringify(r?.status?.msg ?? r?.status?.code ?? 'no response')}`);
+  if (code === 205) return { items: [], total: 0 };
+  if (!r || code !== 200) throw new Error(`taobao-datahub search failed: ${JSON.stringify(r?.status?.msg ?? r?.status?.code ?? 'no response')}`);
   const items: ProviderSearchHit[] = [];
   for (const x of r.resultList ?? []) {
     const id = x.item?.itemId;
@@ -51,6 +52,51 @@ export const mapSearch = (raw: RawSearch): { items: ProviderSearchHit[]; total: 
     });
   }
   return { items, total: r.base?.totalResults ?? items.length };
+};
+
+// ───────── image search ─────────
+
+/** A list entry in any of the shapes seen across DataHub endpoints (nested `item` or flat). */
+type LooseItem = Record<string, unknown> & { item?: Record<string, unknown>; seller?: { storeType?: string } };
+const str = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : undefined);
+const LIST_KEYS = ['resultList', 'items', 'itemList', 'list', 'data'] as const;
+
+/**
+ * Image search ("Item Search 【by Image】"). Its response is expected to match item_search
+ * (`result.resultList[].item`), but the exact shape is unconfirmed, so this also accepts a few
+ * other list keys and flat items. When no list is found, `unknownShape` names the keys seen
+ * so the provider can log them.
+ */
+export const mapImageSearch = (raw: unknown): { items: ProviderSearchHit[]; total: number; unknownShape?: string } => {
+  const root = (raw ?? {}) as Record<string, unknown>;
+  const r = (root.result ?? root) as Record<string, unknown> & { status?: { code?: unknown; msg?: unknown }; base?: { totalResults?: number } };
+  const code = r.status?.code === undefined ? undefined : Number(r.status.code);
+  if (code === 205) return { items: [], total: 0 };
+  if (code !== undefined && code !== 200) throw new Error(`taobao-datahub image search failed: ${JSON.stringify(r.status?.msg ?? code)}`);
+  const key = LIST_KEYS.find((k) => Array.isArray(r[k]));
+  if (!key) return { items: [], total: 0, unknownShape: `keys seen: ${[...Object.keys(root).map((k) => `${k}`), ...(root.result ? Object.keys(r).map((k) => `result.${k}`) : [])].join(', ') || 'none'}` };
+  const items: ProviderSearchHit[] = [];
+  for (const x of r[key] as LooseItem[]) {
+    const it = (x?.item ?? x ?? {}) as Record<string, unknown> & { sku?: { def?: { price?: unknown; promotionPrice?: unknown } } };
+    const id = str(it.itemId ?? it.num_iid ?? it.id);
+    const priceRaw = str(it.sku?.def?.price ?? it.price ?? it.sku?.def?.promotionPrice ?? it.promotionPrice);
+    const fen = yuanToFen(priceRaw);
+    if (!id || !/^\d+$/.test(id) || !fen) continue;
+    const promo = yuanToFen(str(it.sku?.def?.promotionPrice ?? it.promotionPrice));
+    const storeType = str(x?.seller?.storeType ?? it.storeType);
+    const isTmall = storeType === 'tmall' || it.isTmall === true || /tmall\.com/.test(str(it.itemUrl ?? it.detail_url) ?? '');
+    const sales = Number(str(it.sales ?? it.sold) ?? '');
+    items.push({
+      market: isTmall ? 'TMALL' : 'TAOBAO',
+      sourceId: id,
+      titleEn: str(it.title) ?? '',
+      image: https(str(it.image ?? it.pic_url ?? it.pic ?? it.mainImage)),
+      fen,
+      ...(promo && promo < fen ? { promoFen: promo } : {}),
+      ...(sales > 0 ? { soldCount: Math.trunc(sales) } : {}),
+    });
+  }
+  return { items, total: Number(r.base?.totalResults) || items.length };
 };
 
 // ───────── detail ─────────
@@ -102,10 +148,11 @@ const UNKNOWN_STOCK = 999;
 
 export const mapDetail = (raw: RawDetail, requestedId: string): ProviderProduct | null => {
   const r = raw.result;
-  if (r?.status?.code === 205 || r?.status?.code === 404) return null;
-  if (r?.status?.code !== 200) throw new Error(`taobao-datahub detail failed: ${JSON.stringify(r?.status?.msg ?? r?.status?.code ?? 'no response')}`);
-  const it = r.item;
-  if (!it) throw new DetailShapeError('no result.item', Object.keys(r ?? {}));
+  const code = Number(r?.status?.code);
+  if (code === 205 || code === 404) return null;
+  if (code !== 200) throw new Error(`taobao-datahub detail failed: ${JSON.stringify(r?.status?.msg ?? r?.status?.code ?? 'no response')}`);
+  const it = r?.item;
+  if (!r || !it) throw new DetailShapeError('no result.item', Object.keys(r ?? {}));
 
   const sourceId = String(it.itemId ?? requestedId);
   const isTmall = r.seller?.storeType === 'tmall' || /tmall\.com/.test(it.itemUrl ?? '');
@@ -122,11 +169,12 @@ export const mapDetail = (raw: RawDetail, requestedId: string): ProviderProduct 
   }
 
   const def = it.sku?.def;
-  const defFen = yuanToFen(def?.price);
+  // some items carry only promotionPrice (price missing/empty) → use it as the price
+  const defFen = yuanToFen(def?.price) || yuanToFen(def?.promotionPrice);
   const defPromo = yuanToFen(def?.promotionPrice);
   const skus: ProviderSku[] = [];
   for (const b of it.sku?.base ?? []) {
-    const fen = yuanToFen(b.price) || defFen;
+    const fen = yuanToFen(b.price) || yuanToFen(b.promotionPrice) || defFen;
     if (!fen || b.skuId === undefined) continue;
     const props: Record<string, string> = {};
     let image: string | undefined;
@@ -163,7 +211,7 @@ export const mapDetail = (raw: RawDetail, requestedId: string): ProviderProduct 
   const attributes: Record<string, string> = {};
   for (const p of propList) if (p.name && p.value) attributes[p.name] = p.value;
 
-  const images = (it.images ?? it.mainImages ?? []).map(https).filter(Boolean);
+  const images = (it.images?.length ? it.images : it.mainImages ?? []).map(https).filter(Boolean);
   const from = r.delivery?.areaFrom;
   const sales = num(it.sales);
 

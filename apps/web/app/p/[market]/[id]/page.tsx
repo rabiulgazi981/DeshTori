@@ -1,28 +1,50 @@
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { API_URL } from '@/lib/api';
-import type { ProductDetail, PublicSettings } from '@/lib/types';
+import type { Market, ProductDetail, PublicSettings } from '@/lib/types';
 import { BuyBox } from '@/components/product/BuyBox';
 import { Gallery } from '@/components/product/Gallery';
 import { toBanglaDigits } from '@deshtori/shared';
+import { ProductError, type ProductErrorKind } from './ProductError';
 
-async function load(market: string, id: string) {
-  const [p, s] = await Promise.all([
-    fetch(`${API_URL}/products/${market}/${id}`, { cache: 'no-store' }),
-    fetch(`${API_URL}/settings/public`, { next: { revalidate: 60 } }),
-  ]);
-  if (p.status === 404) return null;
-  if (!p.ok) throw new Error('PRODUCT_LOAD_FAILED');
-  return { product: (await p.json()) as ProductDetail, settings: s.ok ? ((await s.json()) as PublicSettings) : null };
-}
+/** URL market segment → API market (accepts any casing, and 1688 for M1688). */
+const MARKETS: Record<string, Market> = { M1688: 'M1688', '1688': 'M1688', TAOBAO: 'TAOBAO', TMALL: 'TMALL' };
+
+const originalUrl = (market: Market, id: string) =>
+  market === 'M1688' ? `https://detail.1688.com/offer/${id}.html` : market === 'TMALL' ? `https://detail.tmall.com/item.htm?id=${id}` : `https://item.taobao.com/item.htm?id=${id}`;
+
+type Loaded = { ok: true; product: ProductDetail; settings: PublicSettings | null } | { ok: false; kind: ProductErrorKind };
+
+/** One API call per request: metadata and page share it (React cache). Never throws. */
+const load = cache(async (market: Market, id: string): Promise<Loaded> => {
+  const settingsP = fetch(`${API_URL}/settings/public`, { next: { revalidate: 60 } })
+    .then((s) => (s.ok ? (s.json() as Promise<PublicSettings>) : null))
+    .catch(() => null);
+  try {
+    const p = await fetch(`${API_URL}/products/${market}/${id}`, { cache: 'no-store' });
+    if (!p.ok) {
+      const body = await p.text().catch(() => '');
+      console.error(`[product] ${market}/${id} → HTTP ${p.status} ${body.slice(0, 300)}`);
+      return { ok: false, kind: p.status === 404 ? (body.includes('PRODUCT_NOT_ALLOWED') ? 'blocked' : 'not_found') : 'failed' };
+    }
+    return { ok: true, product: (await p.json()) as ProductDetail, settings: await settingsP };
+  } catch (e) {
+    console.error(`[product] ${market}/${id} → ${(e as Error).message}`);
+    return { ok: false, kind: 'failed' };
+  }
+});
 
 export async function generateMetadata({ params }: { params: { market: string; id: string } }) {
-  const d = await load(params.market, params.id).catch(() => null);
-  return { title: d ? `${d.product.title} – DeshTori` : 'DeshTori' };
+  const market = MARKETS[params.market.toUpperCase()];
+  const d = market ? await load(market, params.id) : null;
+  return { title: d?.ok ? `${d.product.title} – DeshTori` : 'DeshTori' };
 }
 
 export default async function ProductPage({ params }: { params: { market: string; id: string } }) {
-  const data = await load(params.market, params.id);
-  if (!data) notFound();
+  const market = MARKETS[params.market.toUpperCase()];
+  if (!market || !/^\d{1,20}$/.test(params.id)) notFound();
+  const data = await load(market, params.id);
+  if (!data.ok || !data.product.skus?.length) return <ProductError kind={data.ok ? 'failed' : data.kind} sourceUrl={originalUrl(market, params.id)} />;
   const { product: p, settings } = data;
   return (
     <div className="mx-auto flex max-w-[1280px] flex-col gap-5 px-3 py-5 md:px-6">

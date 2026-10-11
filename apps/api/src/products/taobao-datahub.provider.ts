@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { Market, ProductProvider, ProviderProduct, ProviderSearchHit, SearchOptions } from './provider';
-import { DetailShapeError, mapDetail, mapSearch, RawDetail, RawSearch } from './taobao-datahub.map';
+import { DetailShapeError, mapDetail, mapImageSearch, mapSearch, RawDetail, RawSearch } from './taobao-datahub.map';
 
-export { mapSearch, mapDetail, yuanToFen } from './taobao-datahub.map';
+export { mapSearch, mapDetail, mapImageSearch, yuanToFen } from './taobao-datahub.map';
 
 /**
  * Taobao / Tmall via RapidAPI "Taobao DataHub" (taobao-datahub.p.rapidapi.com).
@@ -15,6 +15,17 @@ const SORT: Record<NonNullable<SearchOptions['sort']>, string> = {
   price_asc: 'priceAsc',
   price_desc: 'priceDesc',
   sales: 'salesDesc',
+};
+
+/**
+ * Image search ("Item Search 【by Image】" in the DataHub endpoint list).
+ * Path and image parameter name are not confirmed against a live response yet, so both can be
+ * changed without a code edit: TAOBAO_IMAGE_SEARCH_PATH / TAOBAO_IMAGE_SEARCH_PARAM.
+ * The image URL must be publicly reachable by RapidAPI (uploads are served at PUBLIC_API_URL/uploads/<name>).
+ */
+export const IMAGE_SEARCH = {
+  path: () => process.env.TAOBAO_IMAGE_SEARCH_PATH || '/item_search_image',
+  param: () => process.env.TAOBAO_IMAGE_SEARCH_PARAM || 'imgUrl',
 };
 
 export class TaobaoDatahubProvider implements ProductProvider {
@@ -37,7 +48,10 @@ export class TaobaoDatahubProvider implements ProductProvider {
         headers: { 'x-rapidapi-host': this.host, 'x-rapidapi-key': this.key },
         signal: ctl.signal,
       });
-      if (!res.ok) throw new Error(`taobao-datahub HTTP ${res.status}`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`taobao-datahub ${path} HTTP ${res.status}: ${body.slice(0, 200)}`);
+      }
       return await res.json();
     } finally {
       clearTimeout(timer);
@@ -51,9 +65,14 @@ export class TaobaoDatahubProvider implements ProductProvider {
     return mapSearch((await this.get('/item_search', this.withLocale(params))) as RawSearch);
   }
 
-  async searchByImage(_imageUrl: string, _opts: SearchOptions): Promise<{ items: ProviderSearchHit[]; total: number }> {
-    this.log.warn('image search not wired for taobao-datahub yet');
-    return { items: [], total: 0 };
+  async searchByImage(imageUrl: string, opts: SearchOptions): Promise<{ items: ProviderSearchHit[]; total: number }> {
+    if (opts.market === 'M1688') return { items: [], total: 0 };
+    const path = IMAGE_SEARCH.path();
+    const params: Record<string, string> = { [IMAGE_SEARCH.param()]: imageUrl, page: String(opts.page ?? 1), pageSize: '20' };
+    const raw = await this.get(path, this.withLocale(params));
+    const r = mapImageSearch(raw);
+    if (r.unknownShape) this.log.warn(`image search ${path}: unknown response shape (${r.unknownShape}) — send this log line to the developer`);
+    return { items: r.items, total: r.total };
   }
 
   async detail(market: Market, sourceId: string): Promise<ProviderProduct | null> {
