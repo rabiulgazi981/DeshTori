@@ -67,3 +67,26 @@ body { top: 0 !important; }
 @media (prefers-reduced-motion: reduce) { .dt-snap, .dt-drive, .dt-nudge { animation: none; } }
 .dt-more-fade { background: linear-gradient(to top, #fff 55%, rgba(255,255,255,0)); }
 html[data-theme='dark'] .dt-more-fade { background: linear-gradient(to top, #121F3D 55%, rgba(18,31,61,0)); color: #fff; }
+
+/* Dark mode: page content uses light-theme utility colours, so remap them inside <main>
+   (the header keeps its own ivory buttons with navy icons). */
+html[data-theme='dark'] main :is(.bg-white, .bg-ivory, .bg-ivory-ph, .bg-ivory-soft) { background-color: #16244A; }
+html[data-theme='dark'] main .bg-white\/90 { background-color: rgba(22, 36, 74, .9); }
+html[data-theme='dark'] main .bg-gold-chip { background-color: rgba(212, 169, 58, .16); }
+html[data-theme='dark'] main .bg-emerald-light { background-color: rgba(15, 107, 79, .28); }
+html[data-theme='dark'] main :is(.from-white, .from-ivory) { --tw-gradient-from: #16244A var(--tw-gradient-from-position); --tw-gradient-to: rgba(22, 36, 74, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html[data-theme='dark'] main :is(.to-white, .to-gold-chip) { --tw-gradient-to: #1D2D58 var(--tw-gradient-to-position); }
+html[data-theme='dark'] main :is(.text-navy, .text-navy-400) { color: #E6ECF8; }
+html[data-theme='dark'] main .text-navy\/80 { color: rgba(230, 236, 248, .8); }
+html[data-theme='dark'] main .text-muted { color: #AEBBD3; }
+html[data-theme='dark'] main .text-gold-ink { color: #E7C25A; }
+html[data-theme='dark'] main :is(.border-ivory-line) { border-color: #2A3B66; }
+html[data-theme='dark'] main :is(.border-navy, .border-navy\/40) { border-color: #5B74AE; }
+html[data-theme='dark'] main .btn-outline { background: transparent; color: #E6ECF8; border-color: #5B74AE; }
+html[data-theme='dark'] main .btn-outline:hover { background: rgba(212, 169, 58, .16); border-color: #D4A93A; }
+html[data-theme='dark'] main :is(.btn-gold, .btn-gold *) { color: #0E2A6B; }
+html[data-theme='dark'] main .shadow-card { box-shadow: none; }
+html[data-theme='dark'] main .via-ivory { --tw-gradient-stops: var(--tw-gradient-from), #1A2950 var(--tw-gradient-via-position), var(--tw-gradient-to); }
+/* Category tile without a photo: soft backdrop the emoji fill, like a product shot. */
+.dt-cat-art { background: radial-gradient(circle at 50% 42%, #fff 0, #FBF3DD 55%, #F3E3B8 100%); }
+html[data-theme='dark'] .dt-cat-art { background: radial-gradient(circle at 50% 42%, #2A3E72 0, #1D2D58 60%, #16244A 100%); }
