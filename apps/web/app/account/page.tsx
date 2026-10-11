@@ -33,9 +33,9 @@ export default function AccountPage() {
     router.push('/login');
   };
 
-  if (!me) return <div className="mx-auto max-w-[1280px] p-6">{err ?? 'লোড হচ্ছে…'}</div>;
+  if (!me) return <div className="mx-auto max-w-[1920px] p-6">{err ?? 'লোড হচ্ছে…'}</div>;
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-4 px-3 py-5 md:px-6 2xl:px-10">
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card flex items-center gap-3 p-4">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-navy text-xl font-bold text-gold-light">{(me.name ?? '?').charAt(0)}</span>

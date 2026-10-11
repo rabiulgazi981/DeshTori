@@ -41,7 +41,7 @@ export async function SearchView({ q, page: pageIn, sort: sortIn, base = '/searc
   };
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-4 px-3 py-5 md:px-6 2xl:px-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">{title ?? `“${q}”`} <span className="text-base font-medium text-muted">{data.total ? `— প্রায় ${toBanglaDigits(data.total)}টি পণ্য` : ''}</span></h1>
         <nav aria-label="সাজানো" className="flex flex-wrap gap-2">
@@ -67,7 +67,7 @@ export async function SearchView({ q, page: pageIn, sort: sortIn, base = '/searc
       {!failed && !data.blocked && q.length >= 2 && data.items.length === 0 && (
         <div className="card p-6">কিছু পাওয়া যায়নি। অন্য শব্দে বা ইংরেজিতে খুঁজে দেখুন, অথবা ছবি দিয়ে খুঁজুন।</div>
       )}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">{data.items.map((p) => <ProductCard key={p.market + p.id} p={p} />)}</div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 min-[1800px]:grid-cols-7">{data.items.map((p) => <ProductCard key={p.market + p.id} p={p} />)}</div>
       {data.items.length > 0 && (
         <div className="flex justify-center gap-2">
           {page > 1 && <Link className="btn-outline" href={qs({ page: String(page - 1) })}>← আগের</Link>}

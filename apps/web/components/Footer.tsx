@@ -64,7 +64,7 @@ export function Footer({ logo = '/brand/logo-footer.png' }: { logo?: string }) {
   const path = usePathname() ?? '/';
   return (
     <footer className="mt-12 bg-navy text-[#C8D3EA]">
-      <div className="mx-auto grid max-w-[1280px] gap-x-10 gap-y-8 px-4 pb-6 pt-10 sm:grid-cols-2 md:px-7 lg:grid-cols-[1.6fr_1fr_1fr_1.3fr]">
+      <div className="mx-auto grid max-w-[1920px] gap-x-10 gap-y-8 px-4 pb-6 pt-10 sm:grid-cols-2 md:px-7 2xl:px-10 lg:grid-cols-[1.6fr_1fr_1fr_1.3fr]">
         {/* Brand + about */}
         <div className="flex flex-col gap-3">
           <Link href="/" aria-label="DeshTori হোম" className="w-fit rounded-md transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-light active:scale-[.98]">
@@ -102,7 +102,7 @@ export function Footer({ logo = '/brand/logo-footer.png' }: { logo?: string }) {
       </div>
 
       {/* Payment methods banner */}
-      <div className="mx-auto max-w-[1280px] px-4 pb-5 md:px-7">
+      <div className="mx-auto max-w-[1920px] px-4 pb-5 md:px-7 2xl:px-10">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-gold-light/30 bg-white/5 px-4 py-3">
           <span className="text-[13px] font-bold text-white">🔒 নিরাপদ পেমেন্ট:</span>
           <ul className="flex flex-wrap gap-2" aria-label="পেমেন্ট মাধ্যম">
@@ -114,7 +114,7 @@ export function Footer({ logo = '/brand/logo-footer.png' }: { logo?: string }) {
       </div>
 
       <div className="border-t border-gold-light/30">
-        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-2 px-4 py-4 text-[13px] md:px-7">
+        <div className="mx-auto flex max-w-[1920px] flex-wrap items-center justify-between gap-2 px-4 py-4 text-[13px] md:px-7 2xl:px-10">
           <span>চীনের বাজার থেকে আপনার দুয়ারে।</span>
           <span>
             Design &amp; Development by{' '}

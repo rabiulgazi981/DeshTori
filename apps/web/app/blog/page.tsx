@@ -60,7 +60,7 @@ export default async function Blog({ searchParams }: Props) {
   );
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-5 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-5 px-3 py-5 md:px-6 2xl:px-10">
       <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1A3C8A] to-[#0A1F52] p-6 text-white shadow-card md:p-10">
         <span className="pointer-events-none absolute -right-6 -top-6 select-none text-[160px] leading-none opacity-10" aria-hidden="true">📚</span>
         <span className="chip w-fit bg-white/10 text-gold-light">DeshTori ব্লগ</span>

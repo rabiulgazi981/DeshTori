@@ -47,7 +47,7 @@ export default async function ProductPage({ params }: { params: { market: string
   if (!data.ok || !data.product.skus?.length) return <ProductError kind={data.ok ? 'failed' : data.kind} sourceUrl={originalUrl(market, params.id)} />;
   const { product: p, settings } = data;
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-5 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-5 px-3 py-5 md:px-6 2xl:px-10">
       <div className="flex flex-wrap items-start gap-5">
         <div className="min-w-0 flex-[1_1_340px]">
           <Gallery images={p.images} />
