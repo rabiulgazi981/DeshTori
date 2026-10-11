@@ -22,6 +22,23 @@ async function trending(): Promise<SearchItem[]> {
   }
 }
 
+/** Categories without an admin-uploaded image get the photo of the top product for their search (cached for a day). */
+async function withCategoryPhotos<T extends Category>(cats: T[]): Promise<T[]> {
+  return Promise.all(
+    cats.map(async (c) => {
+      if (c.image) return c;
+      try {
+        const r = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(c.query || c.name || '')}`, { next: { revalidate: 86400 } });
+        const items: SearchItem[] = r.ok ? (await r.json()).items : [];
+        const img = items.find((i) => i.image)?.image;
+        return img ? { ...c, image: img } : c;
+      } catch {
+        return c;
+      }
+    }),
+  );
+}
+
 const DEFAULT_SERVICES: (Service & { bg: string })[] = [
   { icon: '🏭', title: 'সরাসরি কারখানা থেকে কিনি', text: 'আপনার অর্ডার আমরা চীনের কারখানা, গুদাম বা মূল সেলারের কাছ থেকে সরাসরি কিনি। মাঝে কোনো দালাল নেই।', bg: '📦' },
   { icon: '🚚', title: 'শুধু শিপিং', text: 'নিজে কিনেছেন? আমাদের চায়না গুদামে পাঠান, আমরা দেশে আনব।', bg: '🚛' },
@@ -39,7 +56,7 @@ export default async function Home() {
     getContent<PopupT>('popup'),
     getContent<Campaign>('campaign'),
   ]);
-  const categories = withCategoryDefaults(cats);
+  const categories = await withCategoryPhotos(withCategoryDefaults(cats));
   const live = (banners ?? []).filter((b) => b.image && b.active !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const hero = live.filter((b) => (b.placement ?? 'hero') === 'hero').map((b) => ({ image: b.image!, title: b.showButton === false ? undefined : b.buttonText || b.title, link: b.link }));
   const wide = live.filter((b) => b.placement === 'wide');
@@ -55,7 +72,7 @@ export default async function Home() {
         </section>
       )}
 
-      <div className="flex flex-col gap-4 lg:flex-row">
+      <div className="flex flex-col gap-4 lg:h-[340px] lg:flex-row">
         <CategoryMenu categories={categories} />
         <div className="flex min-w-0 flex-1"><HeroSlider slides={hero} /></div>
       </div>
@@ -85,14 +102,16 @@ export default async function Home() {
         <h2 className="mb-4 flex items-center gap-2.5 text-xl font-bold"><span className="h-5 w-1.5 rounded bg-gold" />ক্যাটাগরি</h2>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
           {categories.map((c) => (
-            <Link key={c.name} href={categoryHref(c)} className="group flex flex-col items-center gap-2 rounded-2xl border border-transparent bg-ivory p-2.5 text-center text-sm font-semibold transition hover:-translate-y-1 hover:border-gold hover:bg-white hover:shadow-gold active:translate-y-0 active:scale-95">
-              {c.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.image} alt="" className="aspect-square w-full rounded-xl object-cover" loading="lazy" />
-              ) : (
-                <span className="flex aspect-square w-full items-center justify-center rounded-xl bg-gradient-to-br from-white to-gold-chip text-4xl shadow-[inset_0_1px_0_#fff,0_4px_10px_-6px_rgba(14,42,107,.4)] transition group-hover:scale-105 md:text-5xl" aria-hidden="true">{c.icon}</span>
-              )}
-              {c.name}
+            <Link key={c.name} href={categoryHref(c)} className="group flex flex-col overflow-hidden rounded-2xl border border-ivory-line bg-white text-center text-sm font-semibold shadow-card transition hover:-translate-y-1 hover:border-gold hover:shadow-gold active:translate-y-0 active:scale-95">
+              <span className="relative block aspect-square overflow-hidden bg-ivory-ph">
+                {c.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.image} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-white to-gold-chip text-5xl" aria-hidden="true">{c.icon}</span>
+                )}
+              </span>
+              <span className="px-2 py-2.5">{c.name}</span>
             </Link>
           ))}
         </div>

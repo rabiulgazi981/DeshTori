@@ -14,6 +14,7 @@ export const BLOG_CATEGORIES = ['চীন থেকে পণ্য আমদ�
 export const DEFAULT_POSTS: Post[] = [
   {
     slug: 'how-to-buy-from-1688-in-bangladesh',
+    image: '/blog/how-to-buy-from-1688-in-bangladesh.jpg',
     title: 'বাংলাদেশ থেকে 1688-এ কীভাবে পণ্য কিনবেন: ধাপে ধাপে গাইড',
     date: '2026-10-08',
     category: '1688/Taobao গাইড',
@@ -56,6 +57,7 @@ DeshTori-তে বাংলা বা ইংরেজিতে পণ্যে�
   },
   {
     slug: 'air-vs-sea-shipping-china-to-bangladesh',
+    image: '/blog/air-vs-sea-shipping-china-to-bangladesh.jpg',
     title: 'চীন থেকে বাংলাদেশ: Air না Sea শিপিং — কোনটা আপনার জন্য?',
     date: '2026-10-06',
     category: 'শিপিং গাইড',
@@ -102,6 +104,7 @@ Air ও Sea দুইভাবেই এই হিসাব করে দেখ�
   },
   {
     slug: 'how-deshtori-pricing-works',
+    image: '/blog/how-deshtori-pricing-works.jpg',
     title: 'DeshTori-তে দাম কীভাবে ঠিক হয়: পণ্যের দাম, শিপিং ও অন্যান্য চার্জ',
     date: '2026-10-04',
     category: 'চীন থেকে পণ্য আমদানি',
@@ -139,6 +142,7 @@ Air ও Sea দুইভাবেই এই হিসাব করে দেখ�
   },
   {
     slug: 'shipping-battery-liquid-sensitive-products-from-china',
+    image: '/blog/shipping-battery-liquid-sensitive-products-from-china.jpg',
     title: 'ব্যাটারি, তরল ও কসমেটিক্স: চীন থেকে আনার আগে যা জানা জরুরি',
     date: '2026-10-02',
     category: 'চীন থেকে পণ্য আমদানি',
@@ -174,6 +178,7 @@ Air ও Sea দুইভাবেই এই হিসাব করে দেখ�
   },
   {
     slug: 'tips-for-small-online-sellers-importing-from-china',
+    image: '/blog/tips-for-small-online-sellers-importing-from-china.jpg',
     title: 'ছোট অনলাইন বিক্রেতাদের জন্য চীন থেকে পণ্য আনার ৮টি কাজের টিপস',
     date: '2026-09-30',
     category: 'ব্যবসার টিপস',

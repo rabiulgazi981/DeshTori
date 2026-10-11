@@ -13,7 +13,8 @@ const BASE_TABS: Tab[] = [
   { key: 'deal', label: '⚡ হট ডিল', q: 'hot deal', sort: 'sales' },
   { key: 'discount', label: '🏷 ডিসকাউন্ট', q: 'discount sale', sort: 'price_asc' },
 ];
-const SHOW = 10;
+/** 5 full rows on desktop (5 columns) */
+const SHOW = 25;
 const ROTATE_MS = 9000;
 
 /** Homepage products: rotates between "for you" (the customer's last search), trending, best sellers, deals and discounts. */
@@ -22,6 +23,7 @@ export function ProductTabs({ initial }: { initial: SearchItem[] }) {
   const [active, setActive] = useState('trending');
   const [data, setData] = useState<Record<string, SearchItem[]>>({ trending: initial });
   const [touched, setTouched] = useState(false);
+  const [full, setFull] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const last = recentSearches()[0];
@@ -33,15 +35,23 @@ export function ProductTabs({ initial }: { initial: SearchItem[] }) {
 
   const tab = tabs.find((t) => t.key === active) ?? tabs[0];
   useEffect(() => {
-    if (data[tab.key]) return;
+    const have = data[tab.key];
+    if (have && (have.length >= SHOW || full[tab.key])) return;
     let live = true;
-    api<{ items: SearchItem[] }>(`/products/search?q=${encodeURIComponent(tab.q)}${tab.sort ? `&sort=${tab.sort}` : ''}`)
-      .then((r) => live && setData((d) => ({ ...d, [tab.key]: r.items })))
-      .catch(() => live && setData((d) => ({ ...d, [tab.key]: [] })));
+    const url = (page: number) => `/products/search?q=${encodeURIComponent(tab.q)}${tab.sort ? `&sort=${tab.sort}` : ''}&page=${page}`;
+    const get = (page: number) => api<{ items: SearchItem[] }>(url(page)).then((r) => r.items).catch(() => [] as SearchItem[]);
+    // one provider page holds 20 items, so fetch the second page too (the first may already be here from the server)
+    Promise.all([have ? Promise.resolve(have) : get(1), get(2)]).then(([a, b]) => {
+      if (!live) return;
+      const seen = new Set<string>();
+      const items = [...a, ...b].filter((p) => !seen.has(p.market + p.id) && !!seen.add(p.market + p.id));
+      setData((d) => ({ ...d, [tab.key]: items }));
+      setFull((f) => ({ ...f, [tab.key]: true }));
+    });
     return () => {
       live = false;
     };
-  }, [tab, data]);
+  }, [tab, data, full]);
 
   useEffect(() => {
     if (touched || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
