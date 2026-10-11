@@ -581,3 +581,16 @@ model Media {
 
   @@index([scope, createdAt])
 }
+
+// ───────────────────────── Search cache ─────────────────────────
+
+/// Provider search results, kept in Postgres so restarts (Render free tier sleeps) don't re-spend API quota.
+/// Expired rows are still served when the provider fails (quota, outage).
+model SearchCache {
+  key       String   @id
+  data      Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
