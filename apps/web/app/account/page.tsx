@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatBdt } from '@deshtori/shared';
 import { api, ApiError, errText } from '@/lib/api';
 import type { Me } from '@/lib/types';
+import { loginHref } from '@/lib/loginNext';
 
 interface OrderRow { code: string; createdAt: string; statusBn: string; shipMode: string; advancePct: number; images: (string | null)[]; bill: { total: number; paid: number; due: number } }
 
@@ -21,7 +22,7 @@ export default function AccountPage() {
         setMe(m.user);
         setOrders(o);
       } catch (e) {
-        if (e instanceof ApiError && e.status === 401) router.push('/login?next=/account');
+        if (e instanceof ApiError && e.status === 401) router.push(loginHref('/account'));
         else setErr(errText(e));
       }
     })();

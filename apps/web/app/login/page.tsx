@@ -1,13 +1,15 @@
 'use client';
 import { FormEvent, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { takeLoginNext } from '@/lib/loginNext';
 import { api, errText, ApiError } from '@/lib/api';
 
 type Step = 'phone' | 'otp' | 'profile' | 'password' | 'reset' | 'staffOtp';
 
 function LoginInner() {
   const router = useRouter();
-  const next = useSearchParams().get('next') || '/account';
+  // old links may still carry ?next=; new ones keep the page in sessionStorage (see lib/loginNext)
+  const qNext = useSearchParams().get('next');
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -52,7 +54,7 @@ function LoginInner() {
   };
 
   const done = () => {
-    router.push(next);
+    router.push(qNext?.startsWith('/') && !qNext.startsWith('//') ? qNext : takeLoginNext('/account'));
     router.refresh();
   };
 

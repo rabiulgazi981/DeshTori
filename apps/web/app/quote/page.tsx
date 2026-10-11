@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { api, ApiError, errText } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { loginHref } from '@/lib/loginNext';
 
 /** Product from another site / bulk sourcing → becomes a support ticket for the team. */
 export default function Quote() {
@@ -13,7 +14,7 @@ export default function Quote() {
       const t = await api<{ code: string }>('/tickets', { method: 'POST', json: { subject: `কোটেশন: ${f.name || f.link}`.slice(0, 120), text: `লিংক: ${f.link}\nপণ্য: ${f.name}\nপরিমাণ: ${f.qty}\nনোট: ${f.note}` } });
       setMsg({ ok: true, text: `অনুরোধ জমা হয়েছে (${t.code})। ২৪ ঘণ্টার মধ্যে দাম জানানো হবে।` });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) router.push('/login?next=/quote');
+      if (e instanceof ApiError && e.status === 401) router.push(loginHref('/quote'));
       else setMsg({ ok: false, text: errText(e) });
     }
   };

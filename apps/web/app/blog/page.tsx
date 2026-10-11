@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { categoriesOf, getPosts, readMinutes, SITE_URL } from '@/lib/blog';
+import { blogCategoryPath } from '@/lib/blog';
 import type { Post } from '@/lib/content';
 
 type Props = { searchParams: { category?: string } };
@@ -10,7 +11,7 @@ const DESC = 'চীন থেকে পণ্য আমদানি, কীভ�
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const cat = searchParams.category?.trim();
   const title = cat ? `${cat} — ব্লগ | DeshTori` : 'ব্লগ — চীন থেকে পণ্য আমদানি ও শিপিং গাইড | DeshTori';
-  const url = cat ? `${SITE_URL}/blog?category=${encodeURIComponent(cat)}` : `${SITE_URL}/blog`;
+  const url = cat ? `${SITE_URL}${blogCategoryPath(cat)}` : `${SITE_URL}/blog`;
   return { title, description: DESC, alternates: { canonical: url }, openGraph: { title, description: DESC, url, type: 'website', siteName: 'DeshTori', locale: 'bn_BD' } };
 }
 
@@ -75,13 +76,13 @@ export default async function Blog({ searchParams }: Props) {
                 <div className="flex items-center gap-2 bg-navy px-4 py-3 font-bold text-white"><span className="text-gold" aria-hidden="true">▦</span>ব্লগ ক্যাটাগরি</div>
                 <ul className="flex flex-col py-1">
                   {item('/blog', 'সব লেখা', '📚', all.length, !active)}
-                  {cats.map((c) => item(`/blog?category=${encodeURIComponent(c)}`, c, icon(c), count(c), active === c))}
+                  {cats.map((c) => item(blogCategoryPath(c), c, icon(c), count(c), active === c))}
                 </ul>
               </nav>
               <nav aria-label="ব্লগ ক্যাটাগরি" className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 lg:hidden">
                 <Link href="/blog" aria-current={!active ? 'page' : undefined} className={`chip min-h-[38px] flex-none border transition active:scale-95 ${!active ? 'border-navy bg-navy text-white' : 'border-ivory-line bg-white hover:bg-gold-chip'}`}>📚 সব লেখা</Link>
                 {cats.map((c) => (
-                  <Link key={c} href={`/blog?category=${encodeURIComponent(c)}`} aria-current={active === c ? 'page' : undefined} className={`chip min-h-[38px] flex-none border transition active:scale-95 ${active === c ? 'border-navy bg-navy text-white' : 'border-ivory-line bg-white hover:bg-gold-chip'}`}>{icon(c)} {c}</Link>
+                  <Link key={c} href={blogCategoryPath(c)} aria-current={active === c ? 'page' : undefined} className={`chip min-h-[38px] flex-none border transition active:scale-95 ${active === c ? 'border-navy bg-navy text-white' : 'border-ivory-line bg-white hover:bg-gold-chip'}`}>{icon(c)} {c}</Link>
                 ))}
               </nav>
             </>

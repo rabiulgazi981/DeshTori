@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { api, ApiError, errText } from '@/lib/api';
+import { loginHref } from '@/lib/loginNext';
 
 /** Load customer data; sends to login (and back) when the session is missing. */
 export function useCustomer<T>(path: string) {
@@ -13,7 +14,7 @@ export function useCustomer<T>(path: string) {
     try {
       setData(await api<T>(path));
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) router.push(`/login?next=${encodeURIComponent(here ?? '/account')}`);
+      if (e instanceof ApiError && e.status === 401) router.push(loginHref(here ?? '/account'));
       else setErr(errText(e));
     }
   }, [path, router, here]);
