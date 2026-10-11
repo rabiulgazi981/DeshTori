@@ -4,7 +4,7 @@ import { categoriesOf, getPosts, readMinutes, SITE_URL } from '@/lib/blog';
 
 type Props = { searchParams: { category?: string } };
 
-const DESC = 'চীন থেকে পণ্য আমদানি, 1688/Taobao থেকে কেনা, Air ও Sea শিপিং এবং অনলাইন ব্যবসা নিয়ে বাংলায় গাইড।';
+const DESC = 'চীন থেকে পণ্য আমদানি, কীভাবে খরচ বাঁচাবেন, আসল ও বিশ্বস্ত মূল সাপ্লায়ার চেনা এবং পণ্যের মান যাচাই নিয়ে বাংলায় গাইড।';
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const cat = searchParams.category?.trim();

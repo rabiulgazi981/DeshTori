@@ -98,7 +98,7 @@ export default async function PostPage({ params }: Props) {
       <aside className="card flex flex-wrap items-center justify-between gap-3 p-5">
         <div>
           <b className="text-lg">চীনের বাজার থেকে আপনার দুয়ারে।</b>
-          <p className="text-sm text-muted">1688 ও Taobao-এর পণ্য বাংলা টাকায় দাম দেখে অর্ডার করুন।</p>
+          <p className="text-sm text-muted">চীনের কারখানা ও মূল সেলারের পণ্য বাংলা টাকায় দাম দেখে অর্ডার করুন।</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/search?q=trending" className="btn-gold">পণ্য খুঁজুন</Link>
