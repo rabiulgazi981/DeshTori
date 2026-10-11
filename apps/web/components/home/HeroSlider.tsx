@@ -5,7 +5,18 @@ import { useEffect, useState } from 'react';
 export interface Slide { image: string; title?: string; link?: string }
 
 /** Hero box: the tagline stays on top while the admin's hero banners fade underneath it. */
-export function HeroSlider({ slides }: { slides: Slide[] }) {
+export function HeroSlider({ slides: all }: { slides: Slide[] }) {
+  // a banner whose image no longer exists (e.g. uploaded before images moved to the database) is skipped
+  const [broken, setBroken] = useState<string[]>([]);
+  const slides = all.filter((s) => !broken.includes(s.image));
+  useEffect(() => {
+    // the first image may fail before React is listening, so check every banner once after mount
+    all.forEach((s) => {
+      const probe = new Image();
+      probe.onerror = () => setBroken((b) => (b.includes(s.image) ? b : [...b, s.image]));
+      probe.src = s.image;
+    });
+  }, [all]);
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
@@ -13,7 +24,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
     const t = setInterval(() => setI((n) => (n + 1) % slides.length), 5000);
     return () => clearInterval(t);
   }, [slides.length, paused]);
-  const current = slides[i];
+  const current = slides[i] ?? slides[0];
 
   return (
     <section
@@ -24,7 +35,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
     >
       {slides.map((s, n) => (
         // eslint-disable-next-line @next/next/no-img-element
-        <img key={s.image + n} src={s.image} alt="" aria-hidden={n !== i} loading={n ? 'lazy' : 'eager'} className={`absolute inset-0 -z-10 h-full w-full object-cover transition-opacity duration-700 ${n === i ? 'opacity-100' : 'opacity-0'}`} />
+        <img key={s.image + n} src={s.image} alt="" aria-hidden={n !== i} loading={n ? 'lazy' : 'eager'} className={`absolute inset-0 -z-10 h-full w-full object-cover transition-opacity duration-700 ${n === (i < slides.length ? i : 0) ? 'opacity-100' : 'opacity-0'}`} />
       ))}
       {!!slides.length && <span className="absolute inset-0 -z-10 bg-gradient-to-r from-[#0A1F52]/95 via-[#0A1F52]/70 to-[#0A1F52]/10" aria-hidden="true" />}
       <div className="flex max-w-2xl flex-col justify-center p-6 md:p-10">

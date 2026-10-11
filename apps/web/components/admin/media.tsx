@@ -181,13 +181,14 @@ export function MediaPicker({ open, onClose, onPick }: { open: boolean; onClose:
 /** Image form field: preview + URL input + "choose from library" button. Drop-in for admin forms. */
 export function ImageField({ label, value, onChange, hint }: { label: string; value?: string; onChange: (url: string) => void; hint?: string }) {
   const [open, setOpen] = useState(false);
+  const [missing, setMissing] = useState<string | null>(null);
   const close = useCallback(() => setOpen(false), []);
   return (
     <Field label={label}>
       <div className="flex items-center gap-2">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="" className="h-14 w-14 flex-none rounded-lg border border-ivory-line object-cover" />
+          <img src={value} alt="" onError={() => setMissing(value)} onLoad={() => setMissing(null)} className="h-14 w-14 flex-none rounded-lg border border-ivory-line object-cover" />
         ) : (
           <span className="h-14 w-14 flex-none rounded-lg bg-ivory-ph" aria-hidden="true" />
         )}
@@ -195,6 +196,7 @@ export function ImageField({ label, value, onChange, hint }: { label: string; va
         <button type="button" className="btn-outline h-11 min-h-0 whitespace-nowrap px-3 text-sm" onClick={() => setOpen(true)}>🖼 বাছুন</button>
         {value && <button type="button" className="btn-outline h-11 min-h-0 px-3 text-sm" onClick={() => onChange('')} aria-label="ছবি সরান">✕</button>}
       </div>
+      {value && missing === value && <span className="text-xs font-semibold text-danger">⚠ এই ছবিটা আর সার্ভারে নেই, তাই সাইটে দেখাবে না। “🖼 বাছুন” চেপে আবার আপলোড করুন।</span>}
       {hint && <span className="text-xs font-normal text-muted">{hint}</span>}
       <MediaPicker open={open} onClose={close} onPick={onChange} />
     </Field>

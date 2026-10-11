@@ -36,7 +36,7 @@ export function CategoryMenu({ categories }: { categories: Cat[] }) {
 
   return (
     <>
-      <nav aria-label="ক্যাটাগরি" className="card hidden min-h-0 w-60 flex-none flex-col overflow-hidden lg:flex">
+      <nav aria-label="ক্যাটাগরি" className="card hidden min-h-0 w-60 flex-none 2xl:w-72 flex-col overflow-hidden lg:flex">
         <div className="flex items-center gap-2 bg-navy px-4 py-3 font-bold text-white"><GridIcon className="h-5 w-5 text-gold" />সব ক্যাটাগরি</div>
         <div className="relative flex min-h-0 flex-1 flex-col">
         <ul ref={list} onScroll={checkMore} className="dt-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain py-1">

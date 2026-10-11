@@ -56,7 +56,7 @@ export default function CartPage() {
     load();
   };
 
-  if (!cart) return <div className="mx-auto max-w-[1280px] p-6">{err ?? 'লোড হচ্ছে…'}</div>;
+  if (!cart) return <div className="mx-auto max-w-[1920px] p-6">{err ?? 'লোড হচ্ছে…'}</div>;
 
   const plans = cart.advancePlans;
   const planObj = plans.find((p) => p.percent === plan) ?? plans[plans.length - 1];
@@ -89,7 +89,7 @@ export default function CartPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-wrap items-start gap-5 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-wrap items-start gap-5 px-3 py-5 md:px-6 2xl:px-10">
       <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
         {err && <p role="alert" className="rounded-xl bg-[#FDECEA] px-3 py-2 font-semibold text-danger">{err}</p>}
 

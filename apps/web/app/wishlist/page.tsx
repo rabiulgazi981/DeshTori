@@ -9,10 +9,10 @@ interface W { id: string; market: string; sourceId: string; title: string; image
 export default function Wishlist() {
   const { data, reload } = useCustomer<W[]>('/wishlist');
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-4 px-3 py-5 md:px-6 2xl:px-10">
       <h1 className="text-2xl font-bold">উইশলিস্ট</h1>
       {data && !data.length && <p className="card p-8 text-center text-muted">পছন্দের পণ্য ♡ চাপ দিয়ে এখানে রাখুন। <Link href="/" className="font-bold underline">পণ্য খুঁজুন</Link></p>}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 min-[1800px]:grid-cols-7">
         {data?.map((w) => (
           <div key={w.id} className="card flex flex-col overflow-hidden">
             <Link href={`/p/${w.market}/${w.sourceId}`}>

@@ -109,7 +109,7 @@ export default function ImageSearch() {
   const busy = phase === 'searching';
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-5 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-5 px-3 py-5 md:px-6 2xl:px-10">
       <input ref={fileRef} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onInput} />
       <input ref={cameraRef} type="file" accept={ACCEPT} capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onInput} />
 
@@ -172,7 +172,7 @@ export default function ImageSearch() {
       )}
 
       {busy && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5" aria-hidden="true">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 min-[1800px]:grid-cols-7" aria-hidden="true">
           {Array.from({ length: 10 }, (_, k) => (
             <div key={k} className="card flex animate-pulse flex-col overflow-hidden">
               <span className="aspect-square bg-ivory-ph" />
@@ -183,7 +183,7 @@ export default function ImageSearch() {
       )}
 
       {phase === 'done' && items.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">{items.map((p) => <ProductCard key={p.market + p.id} p={p} />)}</div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 min-[1800px]:grid-cols-7">{items.map((p) => <ProductCard key={p.market + p.id} p={p} />)}</div>
       )}
     </div>
   );

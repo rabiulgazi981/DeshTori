@@ -4,6 +4,7 @@ import type { SearchItem } from '@/lib/types';
 import { Videos } from '@/components/Videos';
 import { Popup } from '@/components/Popup';
 import { HeroSlider } from '@/components/home/HeroSlider';
+import { HideIfBroken } from '@/components/home/HideIfBroken';
 import { CategoryMenu } from '@/components/home/CategoryMenu';
 import { ProductTabs } from '@/components/home/ProductTabs';
 import { ChatBubble } from '@/components/home/ChatBubble';
@@ -63,7 +64,7 @@ export default async function Home() {
   const serviceCards = services?.length ? services.map((s, n) => ({ ...s, bg: DEFAULT_SERVICES[n % 4].bg })) : DEFAULT_SERVICES;
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-3 py-5 md:px-6">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-6 px-3 py-5 md:px-6 2xl:px-10">
       <Popup p={popup} />
       {campaign?.on && (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-gold bg-gold-chip p-4 text-gold-ink">
@@ -72,7 +73,7 @@ export default async function Home() {
         </section>
       )}
 
-      <div className="flex flex-col gap-4 lg:h-[340px] lg:flex-row">
+      <div className="flex flex-col gap-4 lg:h-[340px] lg:flex-row 2xl:h-[420px]">
         <CategoryMenu categories={categories} />
         <div className="flex min-w-0 flex-1"><HeroSlider slides={hero} /></div>
       </div>
@@ -83,7 +84,8 @@ export default async function Home() {
           <img src={b.image} alt={b.title ?? ''} loading="lazy" className="block aspect-[5/1] min-h-[90px] w-full object-cover" />
         );
         return (
-          <section key={i} className={`group relative overflow-hidden shadow-card ${b.width === 'contained' ? 'rounded-3xl' : '-mx-3 md:-mx-6'}`} aria-label={b.title || 'অফার'}>
+          <HideIfBroken key={i} src={b.image}>
+          <section className={`group relative overflow-hidden shadow-card ${b.width === 'contained' ? 'rounded-3xl' : '-mx-3 md:-mx-6 2xl:-mx-10'}`} aria-label={b.title || 'অফার'}>
             {b.link ? <Link href={b.link} className="block transition group-hover:brightness-105">{img}</Link> : img}
             {(b.title || (b.showButton && b.link)) && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-3 bg-gradient-to-r from-black/40 to-transparent p-4 md:p-8">
@@ -95,12 +97,13 @@ export default async function Home() {
               </div>
             )}
           </section>
+          </HideIfBroken>
         );
       })}
 
       <section className="card p-5">
         <h2 className="mb-4 flex items-center gap-2.5 text-xl font-bold"><span className="h-5 w-1.5 rounded bg-gold" />ক্যাটাগরি</h2>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7 2xl:grid-cols-[repeat(auto-fill,minmax(120px,1fr))]">
           {categories.map((c) => (
             <Link key={c.name} href={categoryHref(c)} className="group flex flex-col overflow-hidden rounded-2xl border border-ivory-line bg-white text-center text-sm font-semibold shadow-card transition hover:-translate-y-1 hover:border-gold hover:shadow-gold active:translate-y-0 active:scale-95">
               <span className="relative block aspect-square overflow-hidden bg-ivory-ph">

@@ -84,11 +84,11 @@ export function ProductTabs({ initial }: { initial: SearchItem[] }) {
         </div>
       </div>
       {loading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-busy="true">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 min-[1800px]:grid-cols-7" aria-busy="true">
           {Array.from({ length: SHOW }, (_, n) => <div key={n} className="aspect-[3/4] animate-pulse rounded-2xl bg-ivory-ph" />)}
         </div>
       ) : items.length ? (
-        <div key={tab.key} className="dt-fade grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{items.map((p) => <ProductCard key={p.market + p.id} p={p} />)}</div>
+        <div key={tab.key} className="dt-fade grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 min-[1800px]:grid-cols-7">{items.map((p) => <ProductCard key={p.market + p.id} p={p} />)}</div>
       ) : (
         <p className="text-muted">এই মুহূর্তে পণ্য লোড করা যাচ্ছে না। একটু পরে আবার দেখুন।</p>
       )}
