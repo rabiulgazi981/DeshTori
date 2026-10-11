@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatBdt, ORDER_STATUSES, STATUS_LABEL_BN, type OrderStatus } from '@deshtori/shared';
 import { api, ApiError, errText, uploadImage } from '@/lib/api';
 import { PayBox } from '@/components/PayBox';
+import { loginHref } from '@/lib/loginNext';
 
 interface Order {
   code: string; status: OrderStatus; shipMode: 'AIR' | 'SEA'; advancePct: number; createdAt: string; deliveryMethod: string;
@@ -28,7 +29,7 @@ export default function OrderPage({ params }: { params: { code: string } }) {
       setO(ord);
       setWallet(w.balancePaisa);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) router.push(`/login?next=/account/orders/${params.code}`);
+      if (e instanceof ApiError && e.status === 401) router.push(loginHref(`/account/orders/${params.code}`));
       else setErr(errText(e));
     }
   }, [params.code, router]);

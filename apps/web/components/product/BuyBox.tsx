@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { formatBdt, quoteCheckout, toBanglaDigits, DEFAULT_ADVANCE_PLANS } from '@deshtori/shared';
 import type { ProductDetail, PublicSettings } from '@/lib/types';
 import { api, ApiError, errText } from '@/lib/api';
+import { loginHref } from '@/lib/loginNext';
 
 export function BuyBox({ product: p, settings }: { product: ProductDetail; settings: PublicSettings | null }) {
   const router = useRouter();
@@ -47,7 +48,7 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
       if (goCart) router.push('/cart');
       else setMsg('✓ কার্টে রাখা হয়েছে');
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) router.push(`/login?next=${encodeURIComponent(location.pathname)}`);
+      if (e instanceof ApiError && e.status === 401) router.push(loginHref(location.pathname));
       else setMsg(errText(e));
     } finally {
       setBusy(false);
@@ -59,7 +60,7 @@ export function BuyBox({ product: p, settings }: { product: ProductDetail; setti
       await api('/wishlist', { method: 'POST', json: { market: p.market, id: p.sourceId } });
       setMsg('♡ উইশলিস্টে রাখা হয়েছে');
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) router.push(`/login?next=${encodeURIComponent(location.pathname)}`);
+      if (e instanceof ApiError && e.status === 401) router.push(loginHref(location.pathname));
       else setMsg(errText(e));
     }
   };

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatBdt, quoteCheckout, toBanglaDigits } from '@deshtori/shared';
 import { api, ApiError, errText } from '@/lib/api';
 import { PayBox } from '@/components/PayBox';
+import { loginHref } from '@/lib/loginNext';
 
 interface CartRow { id: string; label: string; qty: number; shipMode: 'AIR' | 'SEA'; unitPaisa: number; inStock: boolean }
 interface CartGroup { productId: string; title: string; image?: string; market: string; sourceId: string; rows: CartRow[] }
@@ -42,7 +43,7 @@ export default function CartPage() {
       setAddresses(a);
       if (a[0]) setAddressId((x) => x || a[0].id);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) router.push('/login?next=/cart');
+      if (e instanceof ApiError && e.status === 401) router.push(loginHref('/cart'));
       else setErr(errText(e));
     }
   }, [router]);

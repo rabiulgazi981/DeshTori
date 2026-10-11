@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPost, getPosts, postUrl, readMinutes, SITE_URL } from '@/lib/blog';
+import { blogCategoryPath } from '@/lib/blog';
 import { PostBody } from '@/components/PostBody';
 
 type Props = { params: { slug: string } };
@@ -63,7 +64,7 @@ export default async function PostPage({ params }: Props) {
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'হোম', item: SITE_URL },
         { '@type': 'ListItem', position: 2, name: 'ব্লগ', item: `${SITE_URL}/blog` },
-        ...(p.category ? [{ '@type': 'ListItem', position: 3, name: p.category, item: `${SITE_URL}/blog?category=${encodeURIComponent(p.category)}` }] : []),
+        ...(p.category ? [{ '@type': 'ListItem', position: 3, name: p.category, item: `${SITE_URL}${blogCategoryPath(p.category)}` }] : []),
         { '@type': 'ListItem', position: p.category ? 4 : 3, name: p.title, item: postUrl(p) },
       ],
     },
@@ -74,14 +75,14 @@ export default async function PostPage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <nav aria-label="ব্রেডক্রাম্ব" className="flex flex-wrap gap-1 text-sm text-muted">
         <Link href="/" className="underline">হোম</Link> / <Link href="/blog" className="underline">ব্লগ</Link>
-        {p.category && <> / <Link href={`/blog?category=${encodeURIComponent(p.category)}`} className="underline">{p.category}</Link></>}
+        {p.category && <> / <Link href={blogCategoryPath(p.category)} className="underline">{p.category}</Link></>}
       </nav>
       <article className="card overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {p.image && <img src={p.image} alt={p.title ?? ''} className="aspect-video w-full object-cover" />}
         <div className="p-5 md:p-8">
           <p className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {p.category && <Link href={`/blog?category=${encodeURIComponent(p.category)}`} className="chip bg-gold-chip text-gold-ink">{p.category}</Link>}
+            {p.category && <Link href={blogCategoryPath(p.category)} className="chip bg-gold-chip text-gold-ink">{p.category}</Link>}
             <time dateTime={p.date}>{bnDate(p.date)}</time>
             <span>· {readMinutes(p.body).toLocaleString('bn-BD')} মিনিটে পড়ুন</span>
           </p>

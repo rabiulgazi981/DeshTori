@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { can, MeCtx } from '@/components/admin/me';
 import { api, ApiError } from '@/lib/api';
 import type { Me } from '@/lib/types';
+import { loginHref } from '@/lib/loginNext';
 
 type Item = { href: string; label: string; icon: string; roles: string[] };
 const ALL = ['BD_ORDER', 'CN_PURCHASE', 'CN_WAREHOUSE', 'SHIPMENT', 'BD_DELIVERY', 'ACCOUNTS'];
@@ -51,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     api<{ user: Me }>('/auth/me')
       .then((r) => (r.user.kind === 'STAFF' ? setMe(r.user) : setDenied(true)))
       .catch((e) => {
-        if (e instanceof ApiError && e.status === 401) router.replace('/login?next=/admin');
+        if (e instanceof ApiError && e.status === 401) router.replace(loginHref('/admin'));
         else setDenied(true);
       });
   }, [router]);

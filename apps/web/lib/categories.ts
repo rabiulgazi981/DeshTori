@@ -27,4 +27,14 @@ export function withCategoryDefaults(saved: Category[] | null | undefined): (Cat
   });
 }
 
-export const categoryHref = (c: Category) => `/search?q=${encodeURIComponent(c.query || c.name || '')}`;
+/** URL word for a category: "Home & Kitchen" → "home-kitchen". Bangla-only names keep their letters. */
+export const categorySlug = (c: Category) =>
+  (c.query || c.name || '')
+    .toLowerCase()
+    .replace(/&/g, ' ')
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+
+/** Clean, indexable page for a category, e.g. /category/shoes */
+export const categoryPath = (c: Category) => `/category/${encodeURIComponent(categorySlug(c))}`;
+export const categoryHref = categoryPath;

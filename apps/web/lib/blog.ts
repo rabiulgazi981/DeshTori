@@ -249,5 +249,15 @@ export function categoriesOf(posts: Post[]): string[] {
 
 export const postUrl = (p: Post) => `${SITE_URL}/blog/${p.slug}`;
 
+/** "1688/Taobao গাইড" → "1688-taobao-গাইড": no ?category= in links, so Google sees one clean page per category. */
+const BLOG_CAT_SLUG: Record<string, string> = {
+  'চীন থেকে পণ্য আমদানি': 'china-import',
+  'শিপিং গাইড': 'shipping-guide',
+  '1688/Taobao গাইড': '1688-taobao-guide',
+  'ব্যবসার টিপস': 'business-tips',
+};
+export const blogCategorySlug = (c: string) => BLOG_CAT_SLUG[c] ?? c.toLowerCase().replace(/[^\p{L}\p{M}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+export const blogCategoryPath = (c: string) => `/blog/category/${encodeURIComponent(blogCategorySlug(c))}`;
+
 /** Reading time in minutes (Bangla text, ~200 words/min). */
 export const readMinutes = (body = '') => Math.max(1, Math.round(body.split(/\s+/).filter(Boolean).length / 200));
