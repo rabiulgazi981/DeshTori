@@ -38,6 +38,7 @@ model User {
   phone          String     @unique // E.164 +8801XXXXXXXXX
   phoneVerified  Boolean    @default(false)
   email          String?    @unique
+  googleSub      String?    @unique // Google account id, set once the owner proves the phone with OTP
   name           String?
   passwordHash   String?
   customerCode   String?    @unique // shipping mark DT-2041

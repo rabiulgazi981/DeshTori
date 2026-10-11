@@ -3,7 +3,8 @@ import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { User } from '@prisma/client';
 import { AuthService } from './auth.service';
-import { LoginDto, OtpRequestDto, PhoneDto, RegisterDto, ResetDto, StaffVerifyDto } from './dto';
+import { GoogleCompleteDto, GoogleDto, GoogleOtpDto, LoginDto, OtpRequestDto, PhoneDto, RegisterDto, ResetDto, StaffVerifyDto } from './dto';
+import { googleClientId } from './google';
 import { AUTH_COOKIE, AuthedRequest, JwtAuthGuard } from './guards';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -45,6 +46,30 @@ export class AuthController {
   async staffVerify(@Body() dto: StaffVerifyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = await this.auth.staffVerify(dto.phone, dto.code);
     return this.startSession(user, req, res);
+  }
+
+  /** Public: the login page shows the Google button only when a client id is set. */
+  @Get('google/config')
+  googleConfig() {
+    return { clientId: googleClientId() || null };
+  }
+
+  @Post('google') @HttpCode(200)
+  async google(@Body() dto: GoogleDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const r = await this.auth.googleStart(dto.credential, req.ip);
+    if ('user' in r && r.user) return this.startSession(r.user, req, res);
+    return r; // needPhone (link a number once) or needOtp (staff 2FA)
+  }
+
+  @Post('google/otp') @HttpCode(200)
+  googleOtp(@Body() dto: GoogleOtpDto, @Req() req: Request) {
+    return this.auth.googleOtp(dto.ticket, dto.phone, req.ip);
+  }
+
+  @Post('google/complete') @HttpCode(200)
+  async googleComplete(@Body() dto: GoogleCompleteDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const user = await this.auth.googleComplete(dto.ticket, dto.phone, dto.code);
+    return { ...(await this.startSession(user, req, res)), staff: user.kind === 'STAFF' };
   }
 
   @Post('password/reset') @HttpCode(200)

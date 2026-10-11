@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { createHmac, randomInt } from 'crypto';
+import { createHmac, randomBytes, randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { OtpPurpose, User } from '@prisma/client';
 import { normalizeBdPhone } from '@deshtori/shared';
@@ -9,6 +9,7 @@ import { CacheService } from '../prisma/redis.service';
 import { SmsService } from '../notify/sms.service';
 import { AuditService } from '../prisma/audit.service';
 import { JwtUser } from './guards';
+import { GoogleProfile, verifyGoogleIdToken } from './google';
 
 const OTP_TTL_MIN = 5;
 const OTP_MAX_ATTEMPTS = 5;
@@ -147,6 +148,67 @@ export class AuthService {
     await this.consumeOtp(phone, 'STAFF_2FA', code);
     await this.cache.del(`staff2fa:${phone}`);
     return this.prisma.user.findUniqueOrThrow({ where: { id: pending.userId } });
+  }
+
+  /**
+   * Sign in with Google. A Google account works only after it is linked to a phone
+   * (one OTP, see googleComplete); an unlinked one gets a short-lived ticket to do that.
+   * Staff still pass the usual SMS 2FA on every Google sign-in.
+   */
+  async googleStart(credential: string, ip?: string) {
+    const g = await verifyGoogleIdToken(credential);
+    if (!g) throw new UnauthorizedException('GOOGLE_FAILED');
+    const user = await this.prisma.user.findUnique({ where: { googleSub: g.sub } });
+    if (!user) {
+      const ticket = randomBytes(24).toString('hex');
+      await this.cache.set(`google:${ticket}`, g, 900);
+      return { needPhone: true as const, ticket, name: g.name ?? '', email: g.email ?? '' };
+    }
+    if (user.isBlocked) throw new ForbiddenException('ACCOUNT_BLOCKED');
+    if (user.kind === 'STAFF') {
+      await this.cache.set(`staff2fa:${user.phone}`, { userId: user.id }, 600);
+      const r = await this.sendOtp(user.phone, 'STAFF_2FA', ip);
+      return { needOtp: true as const, phone: user.phone, ...r };
+    }
+    return { user };
+  }
+
+  /** Send the phone OTP for a Google ticket. Works for new and existing numbers. */
+  async googleOtp(ticket: string, raw: string, ip?: string) {
+    const phone = this.phoneOrThrow(raw);
+    if (!(await this.cache.get<GoogleProfile>(`google:${ticket}`))) throw new UnauthorizedException('LOGIN_AGAIN');
+    return this.sendOtp(phone, 'REGISTER', ip);
+  }
+
+  /** Phone proven by OTP: link the Google account to that number's account, or open a new customer account. */
+  async googleComplete(ticket: string, raw: string, code: string) {
+    const phone = this.phoneOrThrow(raw);
+    const g = await this.cache.get<GoogleProfile>(`google:${ticket}`);
+    if (!g) throw new UnauthorizedException('LOGIN_AGAIN');
+    await this.consumeOtp(phone, 'REGISTER', code);
+    await this.cache.del(`google:${ticket}`);
+    if (await this.prisma.user.findUnique({ where: { googleSub: g.sub }, select: { id: true } })) throw new BadRequestException('GOOGLE_ALREADY_LINKED');
+    const emailFree = g.email ? !(await this.prisma.user.findUnique({ where: { email: g.email }, select: { id: true } })) : false;
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
+    if (existing) {
+      if (existing.isBlocked) throw new ForbiddenException('ACCOUNT_BLOCKED');
+      const user = await this.prisma.user.update({
+        where: { id: existing.id },
+        data: { googleSub: g.sub, phoneVerified: true, ...(!existing.email && emailFree ? { email: g.email } : {}), ...(!existing.name && g.name ? { name: g.name } : {}) },
+      });
+      await this.audit.log({ actorId: user.id, action: 'GOOGLE_LINKED', entity: 'User', entityId: user.id });
+      return user;
+    }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.prisma.user.create({
+          data: { phone, phoneVerified: true, googleSub: g.sub, name: g.name, email: emailFree ? g.email : undefined, customerCode: await this.nextCustomerCode() },
+        });
+      } catch (e) {
+        if (attempt === 2) throw e; // customerCode collision → retry
+      }
+    }
+    throw new BadRequestException('REGISTER_FAILED');
   }
 
   async resetPassword(raw: string, code: string, password: string) {

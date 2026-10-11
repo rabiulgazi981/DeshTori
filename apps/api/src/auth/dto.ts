@@ -31,3 +31,15 @@ export class ResetDto extends PhoneDto {
 export class StaffVerifyDto extends PhoneDto {
   @Length(6, 6) code: string;
 }
+
+export class GoogleDto {
+  @IsString() @MaxLength(4096) credential: string;
+}
+
+export class GoogleOtpDto extends PhoneDto {
+  @IsString() @Length(48, 48) ticket: string;
+}
+
+export class GoogleCompleteDto extends GoogleOtpDto {
+  @Length(6, 6) code: string;
+}

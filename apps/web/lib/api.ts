@@ -32,6 +32,9 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
 export const ERR_BN: Record<string, string> = {
   INVALID_PHONE: 'মোবাইল নম্বর সঠিক নয়',
   OTP_WRONG: 'কোড মেলেনি',
+  LOGIN_AGAIN: 'সময় শেষ হয়ে গেছে, আবার শুরু করুন',
+  GOOGLE_FAILED: 'Google দিয়ে লগইন হয়নি, আবার চেষ্টা করুন',
+  GOOGLE_ALREADY_LINKED: 'এই Google অ্যাকাউন্ট আগেই আরেকটি নম্বরের সাথে যুক্ত',
   OTP_EXPIRED: 'কোডের মেয়াদ শেষ, আবার পাঠান',
   OTP_WAIT_60S: '১ মিনিট পর আবার চেষ্টা করুন',
   OTP_DAILY_LIMIT: 'আজকের OTP সীমা শেষ। হটলাইনে যোগাযোগ করুন',

@@ -3,8 +3,9 @@ import { FormEvent, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { takeLoginNext } from '@/lib/loginNext';
 import { api, errText, ApiError } from '@/lib/api';
+import { GoogleButton } from '@/components/GoogleButton';
 
-type Step = 'phone' | 'otp' | 'profile' | 'password' | 'reset' | 'staffOtp';
+type Step = 'phone' | 'otp' | 'profile' | 'password' | 'reset' | 'staffOtp' | 'googlePhone' | 'googleOtp';
 
 function LoginInner() {
   const router = useRouter();
@@ -22,6 +23,7 @@ function LoginInner() {
   const [devCode, setDevCode] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ticket, setTicket] = useState('');
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -56,6 +58,40 @@ function LoginInner() {
   const done = () => {
     router.push(qNext?.startsWith('/') && !qNext.startsWith('//') ? qNext : takeLoginNext('/account'));
     router.refresh();
+  };
+
+  const goIn = (kind?: string) => (kind === 'STAFF' ? router.push('/admin') : done());
+
+  const onGoogle = (credential: string) =>
+    run(async () => {
+      const r = await api<{ user?: { kind: string }; needOtp?: boolean; phone?: string; devCode?: string; needPhone?: boolean; ticket?: string; name?: string }>('/auth/google', { method: 'POST', json: { credential } });
+      if (r.needPhone) {
+        setTicket(r.ticket ?? '');
+        setName(r.name ?? '');
+        setStep('googlePhone');
+      } else if (r.needOtp) {
+        setPhone(r.phone ?? '');
+        setDevCode(r.devCode ?? null);
+        setStep('staffOtp');
+      } else goIn(r.user?.kind);
+    });
+
+  const onGooglePhone = (e: FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const r = await api<{ devCode?: string }>('/auth/google/otp', { method: 'POST', json: { ticket, phone } });
+      setDevCode(r.devCode ?? null);
+      setCode('');
+      setStep('googleOtp');
+    });
+  };
+
+  const onGoogleOtp = (e: FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const r = await api<{ user: { kind: string } }>('/auth/google/complete', { method: 'POST', json: { ticket, phone, code } });
+      goIn(r.user.kind);
+    });
   };
 
   const onLogin = (e: FormEvent) => {
@@ -128,6 +164,26 @@ function LoginInner() {
               <p className="text-muted">মোবাইল নম্বর দিন। নতুন হলে একবার OTP দিয়ে যাচাই করে পাসওয়ার্ড সেট করবেন; পরের বার থেকে শুধু পাসওয়ার্ড।</p>
               <label className="label">মোবাইল নম্বর<input className="input text-lg tracking-wide" inputMode="tel" autoComplete="tel" placeholder="01XXXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} required /></label>
               <button disabled={busy} className="btn-gold min-h-[54px] text-lg">পরের ধাপ →</button>
+              <GoogleButton onCredential={onGoogle} />
+            </form>
+          )}
+
+          {step === 'googlePhone' && (
+            <form onSubmit={onGooglePhone} className="flex flex-col gap-4">
+              <button type="button" onClick={() => setStep('phone')} className="self-start font-semibold">← ফিরে যান</button>
+              <h1 className="text-2xl font-bold">{name ? `স্বাগতম, ${name}!` : 'স্বাগতম!'}</h1>
+              <p className="text-muted">প্রথমবার Google দিয়ে ঢুকছেন। আপনার মোবাইল নম্বর দিন, একবার OTP দিয়ে যাচাই করলেই হবে। অর্ডারের খবর এই নম্বরে SMS-এ যাবে।</p>
+              <label className="label">মোবাইল নম্বর<input className="input text-lg tracking-wide" inputMode="tel" autoComplete="tel" placeholder="01XXXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} required /></label>
+              <button disabled={busy} className="btn-gold min-h-[54px] text-lg">OTP পাঠান →</button>
+            </form>
+          )}
+
+          {step === 'googleOtp' && (
+            <form onSubmit={onGoogleOtp} className="flex flex-col gap-4">
+              <h1 className="text-2xl font-bold">OTP কোড দিন</h1>
+              <p className="text-muted">{phone} নম্বরে ৬ সংখ্যার কোড পাঠানো হয়েছে। ৫ মিনিট কাজ করবে।</p>
+              <input className="input max-w-[260px] text-center text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} required />
+              <button disabled={busy || code.length !== 6} className="btn-gold min-h-[54px] text-lg">যাচাই করে ঢুকুন</button>
             </form>
           )}
 
