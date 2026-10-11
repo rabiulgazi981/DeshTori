@@ -93,7 +93,7 @@ export function Header({ logo = '/brand/logo-header.png', showImageSearch = true
           </div>
           {showImageSearch && (
             <label aria-label="ছবি দিয়ে খুঁজুন" title="ছবি দিয়ে খুঁজুন" className={`${iconBtn} h-12 w-12 flex-none cursor-pointer`}>
-              <CameraIcon className="h-6 w-6" />
+              <CameraIcon className="dt-snap h-6 w-6" />
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -112,7 +112,7 @@ export function Header({ logo = '/brand/logo-header.png', showImageSearch = true
         <nav aria-label="অ্যাকাউন্ট" className="ml-auto flex gap-1.5 md:gap-2.5">
           {showShipping && (
             <Link href="/ship" className="btn-gold h-11 px-3 text-[15px] md:h-12 md:px-4">
-              <TruckIcon className="h-5 w-5" />
+              <TruckIcon className="dt-drive h-5 w-5" />
               শিপিং
             </Link>
           )}

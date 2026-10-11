@@ -55,3 +55,15 @@ body { top: 0 !important; }
 .dt-scroll { scrollbar-width: thin; scrollbar-color: rgba(14, 42, 107, 0.25) transparent; }
 .dt-scroll::-webkit-scrollbar { width: 6px; }
 .dt-scroll::-webkit-scrollbar-thumb { background: rgba(14, 42, 107, 0.25); border-radius: 999px; }
+
+/* Header icons: a small, slow motion so they draw the eye without distracting. */
+@keyframes dt-snap { 0%, 86%, 100% { transform: none; } 90% { transform: scale(1.12) rotate(-6deg); } 94% { transform: scale(1.05) rotate(4deg); } }
+@keyframes dt-drive { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(2px); } }
+.dt-snap { animation: dt-snap 4s ease-in-out infinite; }
+.dt-drive { animation: dt-drive 1.6s ease-in-out infinite; }
+/* Category list: "more below" hint */
+@keyframes dt-nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+.dt-nudge { animation: dt-nudge 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .dt-snap, .dt-drive, .dt-nudge { animation: none; } }
+.dt-more-fade { background: linear-gradient(to top, #fff 55%, rgba(255,255,255,0)); }
+html[data-theme='dark'] .dt-more-fade { background: linear-gradient(to top, #121F3D 55%, rgba(18,31,61,0)); color: #fff; }
