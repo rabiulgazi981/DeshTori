@@ -55,7 +55,7 @@ export default async function Home() {
         </section>
       )}
 
-      <div className="flex flex-col gap-4 lg:flex-row">
+      <div className="flex flex-col gap-4 lg:h-[340px] lg:flex-row">
         <CategoryMenu categories={categories} />
         <div className="flex min-w-0 flex-1"><HeroSlider slides={hero} /></div>
       </div>

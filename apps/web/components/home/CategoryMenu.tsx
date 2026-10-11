@@ -25,9 +25,9 @@ export function CategoryMenu({ categories }: { categories: Cat[] }) {
 
   return (
     <>
-      <nav aria-label="ক্যাটাগরি" className="card hidden w-60 flex-none flex-col overflow-hidden lg:flex">
+      <nav aria-label="ক্যাটাগরি" className="card hidden min-h-0 w-60 flex-none flex-col overflow-hidden lg:flex">
         <div className="flex items-center gap-2 bg-navy px-4 py-3 font-bold text-white"><GridIcon className="h-5 w-5 text-gold" />সব ক্যাটাগরি</div>
-        <ul className="flex flex-col py-1">
+        <ul className="dt-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain py-1">
           {categories.map((c) => (
             <li key={c.name}>
               <Link href={categoryHref(c)} onClick={() => rememberSearch(c.query || c.name || '')} className="group flex items-center gap-3 px-4 py-2 text-[15px] font-medium transition hover:bg-gold-chip hover:pl-5 active:bg-gold/30">

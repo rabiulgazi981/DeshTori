@@ -50,3 +50,8 @@ body { top: 0 !important; }
 .dt-pop { animation: dt-pop .35s cubic-bezier(.2,.9,.3,1.2) both; }
 .dt-fade { animation: dt-fade .6s ease both; }
 @media (prefers-reduced-motion: reduce) { .dt-pop, .dt-fade { animation: none; } }
+
+/* thin scrollbar for the homepage category list */
+.dt-scroll { scrollbar-width: thin; scrollbar-color: rgba(14, 42, 107, 0.25) transparent; }
+.dt-scroll::-webkit-scrollbar { width: 6px; }
+.dt-scroll::-webkit-scrollbar-thumb { background: rgba(14, 42, 107, 0.25); border-radius: 999px; }
