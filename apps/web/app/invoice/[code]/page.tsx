@@ -38,7 +38,7 @@ export default function InvoicePage({ params }: { params: { code: string } }) {
           <div>
             <h2 className="mb-1 font-bold text-gold-ink">বিক্রেতা</h2>
             <p className="font-bold">DeshTori Door To Door</p>
-            <p>219 West Monipur, Barek Mollar Mor, 60 Feet Road, Mirpur-2, Dhaka-1216</p>
+            <p>219 West Monipur, Barek Mollar Mor, 60 Fit Road, Mirpur-2, Dhaka-1216</p>
             <p>01938-27 38 78 · info@deshtori.com</p>
           </div>
           <div>
