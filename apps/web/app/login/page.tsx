@@ -111,7 +111,7 @@ function LoginInner() {
           <img src="/brand/logo-header.png" alt="DeshTori" className="w-full max-w-[280px]" />
           <h2 className="text-xl font-bold text-white md:text-2xl">চীনের বাজার থেকে আপনার দুয়ারে।</h2>
           <ul className="hidden flex-col gap-3 md:flex">
-            {['চীনের আসল কারখানা ও সাপ্লায়ারের লাখো পণ্য', 'টাকায় লাইভ দাম', 'নিজস্ব চায়না টিম ও গুদাম', 'Air ৭–১৫ দিন · Sea ৪৫–৬৫ দিন'].map((t) => (
+            {['চীনের আসল কারখানা ও সাপ্লায়ারের লাখো পণ্য', 'বাংলা টাকায় লাইভ দাম', 'নিজস্ব চায়না টিম ও গুদাম', 'Air ৭–১৫ দিন · Sea ৪৫–৬৫ দিন'].map((t) => (
               <li key={t} className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold font-bold text-navy">✓</span><b className="text-white">{t}</b></li>
             ))}
           </ul>

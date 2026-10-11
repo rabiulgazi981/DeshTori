@@ -90,3 +90,7 @@ html[data-theme='dark'] main .via-ivory { --tw-gradient-stops: var(--tw-gradient
 /* Category tile without a photo: soft backdrop the emoji fill, like a product shot. */
 .dt-cat-art { background: radial-gradient(circle at 50% 42%, #fff 0, #FBF3DD 55%, #F3E3B8 100%); }
 html[data-theme='dark'] .dt-cat-art { background: radial-gradient(circle at 50% 42%, #2A3E72 0, #1D2D58 60%, #16244A 100%); }
+html[data-theme='dark'] main :is(.hover\:bg-gold-chip:hover, .active\:bg-gold\/30:active) { background-color: rgba(212, 169, 58, .22); color: #F4D98A; }
+html[data-theme='dark'] main :is(.hover\:bg-white:hover, .hover\:bg-ivory-soft:hover, .active\:bg-ivory-ph:active) { background-color: #1F3163; }
+html[data-theme='dark'] main .hover\:text-navy:hover { color: #fff; }
+html[data-theme='dark'] main .dt-scroll { scrollbar-color: rgba(230, 236, 248, .25) transparent; }

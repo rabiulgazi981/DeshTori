@@ -22,6 +22,34 @@ const BASE: Metadata = {
   icons: { icon: '/brand/logo-header.png' },
 };
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://deshtori.com';
+/** Lets Google show the brand, logo and a site search box in results. */
+const SITE_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE}/#org`,
+      name: 'DeshTori',
+      url: SITE,
+      logo: `${SITE}/brand/logo-footer.png`,
+      slogan: 'চীনের বাজার থেকে আপনার দুয়ারে।',
+      telephone: '+8801938273878',
+      email: 'info@deshtori.com',
+      address: { '@type': 'PostalAddress', streetAddress: '219 West Monipur, Barek Mollar Mor, 60 Fit Road, Mirpur-2', addressLocality: 'Dhaka', postalCode: '1216', addressCountry: 'BD' },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE}/#site`,
+      url: SITE,
+      name: 'DeshTori',
+      inLanguage: 'bn-BD',
+      publisher: { '@id': `${SITE}/#org` },
+      potentialAction: { '@type': 'SearchAction', target: `${SITE}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' },
+    },
+  ],
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getContent<Seo>('seo');
   if (!seo) return BASE;
@@ -56,6 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `try{var t=localStorage.getItem('dt-theme')||${JSON.stringify(appearance.defaultTheme).replace(/</g, '\\u003c')};var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light'}catch(e){}`,
           }}
         />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_LD) }} />
       </head>
       <body className="min-h-screen flex flex-col">
         <Chrome top={<TopBar notice={settings?.notice} />} header={<Header logo={appearance.headerLogo} showImageSearch={appearance.showImageSearch} showShipping={appearance.showShipping} />} footer={<Footer logo={appearance.footerLogo} />} showMobileNav={appearance.showMobileNav} showShipping={appearance.showShipping}>

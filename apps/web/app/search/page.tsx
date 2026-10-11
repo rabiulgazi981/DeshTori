@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+import { DEFAULT_CATEGORIES } from '@/lib/categories';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 import type { SearchItem } from '@/lib/types';
@@ -10,6 +12,21 @@ const SORTS = [
   ['price_asc', 'দাম: কম → বেশি'],
   ['price_desc', 'দাম: বেশি → কম'],
 ] as const;
+
+const CAT_BN = new Map(DEFAULT_CATEGORIES.map((c) => [(c.query ?? "").toLowerCase(), c.name]));
+
+export function generateMetadata({ searchParams }: { searchParams: { q?: string; page?: string; sort?: string } }): Metadata {
+  const q = (searchParams.q ?? '').trim();
+  if (!q) return { title: 'পণ্য খুঁজুন | DeshTori' };
+  const name = CAT_BN.get(q.toLowerCase()) ?? q;
+  return {
+    title: `${name} চীন থেকে কিনুন, বাংলা টাকায় দাম | DeshTori`,
+    description: `চীনের কারখানা ও মূল সাপ্লায়ারের ${name} বাংলা টাকায় লাইভ দামে অর্ডার করুন। Air ৭–১৫ দিন, Sea ৪৫–৬৫ দিনে ঘরে ডেলিভারি।`,
+    alternates: { canonical: `/search?q=${encodeURIComponent(q)}` },
+    // sort / page variants are the same listing; keep them out of the index
+    robots: searchParams.sort || (searchParams.page && searchParams.page !== '1') ? { index: false, follow: true } : undefined,
+  };
+}
 
 export default async function SearchPage({ searchParams }: { searchParams: { q?: string; page?: string; sort?: string } }) {
   const q = (searchParams.q ?? '').trim();
