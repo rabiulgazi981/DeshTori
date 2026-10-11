@@ -12,6 +12,8 @@ import { MockProvider } from './mock.provider';
 import { Market, parseProductLink, ProductProvider, ProviderProduct, SearchOptions } from './provider';
 
 /** Image search is open to guests, so it is rate limited per IP and overall (RapidAPI quota). */
+type SearchRaw = Awaited<ReturnType<ProductProvider['search']>>;
+
 const IMAGE_SEARCH_PER_IP = { limit: 10, windowSec: 600 };
 const IMAGE_SEARCH_GLOBAL = { limit: 300, windowSec: 3600 };
 
@@ -45,6 +47,30 @@ export class ProductsService {
     return cnyToBdt(useOriginal || !promoFen ? fen : promoFen, s);
   }
 
+  /**
+   * Postgres-backed search cache, so restarts don't re-spend the provider's monthly quota.
+   * Kept for SEARCH_CACHE_HOURS (default 24, at least the admin's cache window); an expired copy
+   * is still served when the provider fails (quota exceeded, outage).
+   */
+  private async searchCached(key: string, cacheMin: number, fetchFresh: () => Promise<SearchRaw>): Promise<SearchRaw> {
+    const row = await this.prisma.searchCache.findUnique({ where: { key } }).catch(() => null);
+    if (row && row.expiresAt > new Date()) return row.data as unknown as SearchRaw;
+    try {
+      const fresh = await fetchFresh();
+      const hours = Math.max(Number(process.env.SEARCH_CACHE_HOURS) || 24, cacheMin / 60);
+      const data = fresh as unknown as Prisma.InputJsonValue;
+      const expiresAt = new Date(Date.now() + hours * 3_600_000);
+      await this.prisma.searchCache.upsert({ where: { key }, create: { key, data, expiresAt }, update: { data, expiresAt } }).catch((e) => this.log.warn(`search cache write failed: ${(e as Error).message}`));
+      return fresh;
+    } catch (e) {
+      if (row) {
+        this.log.warn(`search ${key} failed, serving cached copy: ${(e as Error).message}`);
+        return row.data as unknown as SearchRaw;
+      }
+      throw e;
+    }
+  }
+
   async search(query: string, opts: SearchOptions) {
     const { provider, cacheMin, revision } = await this.providerConfig();
     const q = query.trim();
@@ -53,9 +79,9 @@ export class ProductsService {
     if (this.isBlocked(q, list)) return { items: [], total: 0, blocked: true };
 
     const key = `search:${provider.name}:${revision}:${q.toLowerCase()}:${opts.page ?? 1}:${opts.market ?? 'ALL'}:${opts.sort ?? 'relevance'}`;
-    let raw = await this.cache.get<Awaited<ReturnType<ProductProvider['search']>>>(key);
+    let raw = await this.cache.get<SearchRaw>(key);
     if (!raw) {
-      raw = await provider.search(q, opts);
+      raw = await this.searchCached(key, cacheMin, () => provider.search(q, opts));
       await this.cache.set(key, raw, cacheMin * 60);
     }
     const s = await this.settings.get();
