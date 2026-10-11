@@ -108,7 +108,12 @@ export default async function Home() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={c.image} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
                 ) : (
-                  <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-white to-gold-chip text-5xl" aria-hidden="true">{c.icon}</span>
+                  <span className="dt-cat-art relative block h-full w-full" aria-hidden="true">
+                    <span className="absolute inset-0 flex items-center justify-center pb-[8%] text-[64px] leading-none transition duration-300 group-hover:scale-110 md:text-[76px]">{c.icon}</span>
+                    {[...(c.more ?? '')].filter((ch) => /\p{Extended_Pictographic}/u.test(ch)).slice(0, 2).map((e, n) => (
+                      <span key={n} className={`absolute bottom-[6%] text-[34px] leading-none md:text-[40px] ${n ? 'right-[8%] rotate-[10deg]' : 'left-[8%] -rotate-[10deg]'}`}>{e}</span>
+                    ))}
+                  </span>
                 )}
               </span>
               <span className="px-2 py-2.5">{c.name}</span>
