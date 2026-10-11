@@ -5,7 +5,10 @@ export async function getContent<T>(key: string): Promise<T | null> {
   try {
     const r = await fetch(`${API_URL}/content/${key}`, { next: { revalidate: 60 } });
     if (!r.ok) return null;
-    return ((await r.json()) as { value: T | null }).value;
+    // Uploaded images are stored with the host they were uploaded on (e.g. the old onrender.com address);
+    // serve them from this site instead so a domain change never breaks banners or logos.
+    const text = (await r.text()).replace(/https?:\/\/[^"\s]+?(\/api\/uploads\/)/g, '$1');
+    return (JSON.parse(text) as { value: T | null }).value;
   } catch {
     return null;
   }
